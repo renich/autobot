@@ -42,7 +42,7 @@ module Autobot
 
       def initialize(
         @per_tool_limits = {} of String => Limit,
-        @global_limit : Limit? = nil,
+        @global_limit : Limit? = nil
       )
         @trackers = {} of String => CallTracker
         @mutex = Mutex.new

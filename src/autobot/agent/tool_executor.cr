@@ -36,7 +36,7 @@ module Autobot::Agent
       @provider : Providers::Provider,
       @context : Context::Builder,
       @model : String,
-      @max_iterations : Int32 = 20,
+      @max_iterations : Int32 = 20
     )
     end
 
@@ -52,7 +52,7 @@ module Autobot::Agent
       tools : Tools::Registry,
       session_key : String? = nil,
       exclude_tools : Array(String)? = nil,
-      stop_after_tool : String? = nil,
+      stop_after_tool : String? = nil
     ) : Result
       final_content : String? = nil
       tools_used = [] of String
@@ -101,7 +101,7 @@ module Autobot::Agent
       messages : Array(Hash(String, JSON::Any)),
       tools : Tools::Registry,
       exclude_tools : Array(String)?,
-      compact_tools : Array(String)?,
+      compact_tools : Array(String)?
     ) : Providers::Response
       response = @provider.chat(
         messages: messages,
@@ -123,7 +123,7 @@ module Autobot::Agent
       response : Providers::Response,
       tools : Tools::Registry,
       tools_used : Array(String),
-      session_key : String?,
+      session_key : String?
     ) : Array(Hash(String, JSON::Any))
       messages = @context.add_assistant_message(
         messages,
@@ -149,7 +149,7 @@ module Autobot::Agent
     # them for its next decision. Only truncates results exceeding TRUNCATION_THRESHOLD.
     private def truncate_old_tool_results(
       messages : Array(Hash(String, JSON::Any)),
-      iteration_boundaries : Array(Int32),
+      iteration_boundaries : Array(Int32)
     ) : Nil
       return if iteration_boundaries.size < 2
 

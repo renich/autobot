@@ -65,7 +65,7 @@ module Autobot::Agent
       @cron_service : Cron::Service? = nil,
       brave_api_key : String? = nil,
       exec_timeout : Int32 = 60,
-      sandbox_config : String = "auto",
+      sandbox_config : String = "auto"
     )
       @model = model || @provider.default_model
       sandboxed = sandbox_config.downcase != "none"
@@ -131,7 +131,7 @@ module Autobot::Agent
       content : String,
       session_key : String = Constants::DEFAULT_SESSION_KEY,
       channel : String = Constants::CHANNEL_CLI,
-      chat_id : String = Constants::DEFAULT_CHAT_ID,
+      chat_id : String = Constants::DEFAULT_CHAT_ID
     ) : String
       msg = Bus::InboundMessage.new(
         channel: channel,

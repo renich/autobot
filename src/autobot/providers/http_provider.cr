@@ -36,7 +36,7 @@ module Autobot
         api_base : String? = nil,
         @model : String = "anthropic/claude-sonnet-4-5-20250929",
         @extra_headers = {} of String => String,
-        provider_name : String? = nil,
+        provider_name : String? = nil
       )
         super(api_key, api_base)
         @gateway = Providers.find_gateway(provider_name, api_key, api_base)
@@ -51,7 +51,7 @@ module Autobot
         tools : Array(Hash(String, JSON::Any))? = nil,
         model : String? = nil,
         max_tokens : Int32 = DEFAULT_MAX_TOKENS,
-        temperature : Float64 = DEFAULT_TEMPERATURE,
+        temperature : Float64 = DEFAULT_TEMPERATURE
       ) : Response
         effective_model = model || @model
         spec = resolve_spec(effective_model)
@@ -72,7 +72,7 @@ module Autobot
       # OpenAI-compatible (standard) request
       # -----------------------------------------------------------------
       private def chat_compatible(
-        messages, tools, model, max_tokens, temperature, spec,
+        messages, tools, model, max_tokens, temperature, spec
       ) : Response
         body = build_compatible_body(messages, tools, model, max_tokens, temperature, spec)
         url = resolve_url(spec)
@@ -144,7 +144,7 @@ module Autobot
       # Anthropic Messages API
       # -----------------------------------------------------------------
       private def chat_anthropic(
-        messages, tools, model, max_tokens, temperature, spec,
+        messages, tools, model, max_tokens, temperature, spec
       ) : Response
         body = build_anthropic_body(messages, tools, model, max_tokens, temperature)
         url = resolve_url(spec)
@@ -485,7 +485,7 @@ module Autobot
       # does not support the "system" role (e.g. DuckAI).
       private def maybe_merge_system_role(
         messages : Array(Hash(String, JSON::Any)),
-        spec : ProviderSpec?,
+        spec : ProviderSpec?
       ) : Array(Hash(String, JSON::Any))
         return messages if spec.nil? || spec.supports_system_role?
 
@@ -502,7 +502,7 @@ module Autobot
 
       private def prepend_system_to_first_user(
         messages : Array(Hash(String, JSON::Any)),
-        system_text : String,
+        system_text : String
       ) : Array(Hash(String, JSON::Any))
         first_user_idx = messages.index { |msg| msg["role"]?.try(&.as_s?) == Constants::ROLE_USER }
 

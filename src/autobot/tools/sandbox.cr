@@ -89,7 +89,7 @@ module Autobot
         command : String,
         workspace : Path,
         timeout : Int32,
-        max_output_size : Int32 = 10_000,
+        max_output_size : Int32 = 10_000
       ) : {Process::Status, String, String}
         Log.debug { "Executing shell command in sandbox: #{command}" }
         run_in_sandbox(["sh", "-c", command], workspace, timeout, max_output_size)
@@ -102,7 +102,7 @@ module Autobot
         args : Array(String),
         workspace : Path,
         timeout : Int32,
-        max_output_size : Int32 = 10_000,
+        max_output_size : Int32 = 10_000
       ) : {Process::Status, String, String}
         Log.debug { "Executing program in sandbox: #{program} #{args.join(" ")}" }
         run_in_sandbox([program] + args, workspace, timeout, max_output_size)
@@ -112,7 +112,7 @@ module Autobot
         cmd_args : Array(String),
         workspace : Path,
         timeout : Int32,
-        max_output_size : Int32,
+        max_output_size : Int32
       ) : {Process::Status, String, String}
         case detect
         when Type::Bubblewrap
@@ -128,7 +128,7 @@ module Autobot
         cmd_args : Array(String),
         workspace : Path,
         timeout : Int32,
-        max_output_size : Int32,
+        max_output_size : Int32
       ) : {Process::Status, String, String}
         workspace_real = File.realpath(workspace.to_s)
 
@@ -157,7 +157,7 @@ module Autobot
         cmd_args : Array(String),
         workspace : Path,
         timeout : Int32,
-        max_output_size : Int32,
+        max_output_size : Int32
       ) : {Process::Status, String, String}
         workspace_real = File.realpath(workspace.to_s)
         image = @@docker_image || DOCKER_DEFAULT_IMAGE
@@ -242,7 +242,7 @@ module Autobot
         sandbox_cmd : String,
         args : Array(String),
         timeout : Int32,
-        max_output_size : Int32,
+        max_output_size : Int32
       ) : {Process::Status, String, String}
         stdout_read, stdout_write = IO.pipe
         stderr_read, stderr_write = IO.pipe
@@ -303,7 +303,7 @@ module Autobot
       private def self.wait_for_process(
         process : Process,
         completed : Channel(Process::Status),
-        timeout : Int32,
+        timeout : Int32
       ) : Process::Status
         select
         when status = completed.receive

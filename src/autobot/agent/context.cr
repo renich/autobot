@@ -34,7 +34,7 @@ module Autobot::Agent
         channel : String? = nil,
         chat_id : String? = nil,
         background : Bool = false,
-        tool_names : Array(String)? = nil,
+        tool_names : Array(String)? = nil
       ) : Array(Hash(String, JSON::Any))
         messages = [] of Hash(String, JSON::Any)
 
@@ -72,7 +72,7 @@ module Autobot::Agent
         messages : Array(Hash(String, JSON::Any)),
         content : String?,
         tool_calls : Array(Providers::ToolCall),
-        reasoning_content : String? = nil,
+        reasoning_content : String? = nil
       ) : Array(Hash(String, JSON::Any))
         tool_call_data = tool_calls.map do |tool_call|
           data = {
@@ -110,7 +110,7 @@ module Autobot::Agent
         messages : Array(Hash(String, JSON::Any)),
         tool_call_id : String,
         tool_name : String,
-        result : String,
+        result : String
       ) : Array(Hash(String, JSON::Any))
         messages << {
           "role"         => JSON::Any.new(Constants::ROLE_TOOL),

@@ -18,7 +18,7 @@ module Autobot
         @completion_tokens = 0,
         @total_tokens = 0,
         @cache_creation_tokens = 0,
-        @cache_read_tokens = 0,
+        @cache_read_tokens = 0
       )
       end
 
@@ -59,7 +59,7 @@ module Autobot
         @tool_calls = [] of ToolCall,
         @finish_reason = "stop",
         @usage = TokenUsage.new,
-        @reasoning_content = nil,
+        @reasoning_content = nil
       )
       end
 

@@ -66,7 +66,7 @@ module Autobot::Channels
       chat_id : String,
       content : String,
       media : Array(Bus::MediaAttachment)? = nil,
-      metadata : Hash(String, String) = {} of String => String,
+      metadata : Hash(String, String) = {} of String => String
     ) : Nil
       unless allowed?(sender_id)
         Log.warn { "Access denied for sender #{sender_id} on #{@name}. Add to allow_from to grant access." }

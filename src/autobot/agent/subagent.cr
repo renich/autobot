@@ -47,7 +47,7 @@ module Autobot
         @model : String? = nil,
         @brave_api_key : String? = nil,
         @exec_timeout : Int32 = 60,
-        @sandbox_config : String = "auto",
+        @sandbox_config : String = "auto"
       )
         @context = Context::Builder.new(@workspace)
       end
@@ -57,7 +57,7 @@ module Autobot
         task : String,
         label : String? = nil,
         origin_channel : String = Constants::CHANNEL_CLI,
-        origin_chat_id : String = Constants::DEFAULT_CHAT_ID,
+        origin_chat_id : String = Constants::DEFAULT_CHAT_ID
       ) : String
         task_id = UUID.random.to_s[0, TASK_ID_LENGTH]
         display_label = label || truncate_label(task)
@@ -84,7 +84,7 @@ module Autobot
         task_id : String,
         task : String,
         label : String,
-        origin : Hash(String, String),
+        origin : Hash(String, String)
       ) : Nil
         Log.info { "Subagent [#{task_id}] starting task: #{label}" }
 
@@ -130,7 +130,7 @@ module Autobot
         task : String,
         result : String,
         origin : Hash(String, String),
-        status : Status,
+        status : Status
       ) : Nil
         status_text = status.ok? ? "completed successfully" : "failed"
 

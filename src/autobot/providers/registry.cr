@@ -48,7 +48,7 @@ module Autobot
         @model_overrides = {} of String => Hash(String, JSON::Any),
         @use_max_completion_tokens = false,
         @max_tokens_legacy_patterns = [] of String,
-        @supports_system_role = true,
+        @supports_system_role = true
       )
         @display_name = @name.capitalize if @display_name.empty?
       end
@@ -181,7 +181,7 @@ module Autobot
     def self.find_gateway(
       provider_name : String? = nil,
       api_key : String? = nil,
-      api_base : String? = nil,
+      api_base : String? = nil
     ) : ProviderSpec?
       explicit_match = find_gateway_by_name(provider_name)
       return explicit_match if explicit_match

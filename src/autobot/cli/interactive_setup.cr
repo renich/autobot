@@ -52,7 +52,7 @@ module Autobot
           @aws_region = nil,
           @zulip_site = nil,
           @zulip_email = nil,
-          @zulip_api_key = nil,
+          @zulip_api_key = nil
         )
         end
       end

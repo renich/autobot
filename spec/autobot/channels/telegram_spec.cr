@@ -46,7 +46,7 @@ end
 private def build_channel(
   allow_from : Array(String) = [] of String,
   custom_commands : Autobot::Config::CustomCommandsConfig? = nil,
-  cron_service : Autobot::Cron::Service? = nil,
+  cron_service : Autobot::Cron::Service? = nil
 ) : TelegramChannelTest
   bus = Autobot::Bus::MessageBus.new
   cmds = custom_commands || Autobot::Config::CustomCommandsConfig.new
