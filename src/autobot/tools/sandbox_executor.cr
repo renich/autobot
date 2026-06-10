@@ -70,6 +70,16 @@ module Autobot
         ToolResult.error("Cannot execute command: #{ex.message}")
       end
 
+      def exec_program(program : String, args : Array(String), timeout : Int32 = 60) : ToolResult
+        if workspace = @workspace
+          exec_program_via_sandbox_exec(program, args, timeout, workspace)
+        else
+          exec_program_direct(program, args, timeout)
+        end
+      rescue ex
+        ToolResult.error("Cannot execute program: #{ex.message}")
+      end
+
       # Sandbox.exec-based execution
       private def read_file_via_sandbox_exec(path : String, workspace : Path) : ToolResult
         success, output = Sandbox.read_file(path, workspace)
@@ -93,6 +103,21 @@ module Autobot
 
       private def exec_via_sandbox_exec(command : String, timeout : Int32, workspace : Path) : ToolResult
         status, stdout, stderr = Sandbox.exec(command, workspace, timeout)
+
+        parts = [] of String
+        parts << stdout unless stdout.empty?
+        parts << "STDERR:\n#{stderr}" unless stderr.empty?
+
+        if !status.success? && status.exit_code != Sandbox::TIMEOUT_EXIT_CODE
+          parts << "\nExit code: #{status.exit_code}"
+        end
+
+        data = parts.empty? ? "[no output]" : parts.join("\n")
+        ToolResult.success(data)
+      end
+
+      private def exec_program_via_sandbox_exec(program : String, args : Array(String), timeout : Int32, workspace : Path) : ToolResult
+        status, stdout, stderr = Sandbox.exec_program(program, args, workspace, timeout)
 
         parts = [] of String
         parts << stdout unless stdout.empty?
@@ -176,6 +201,55 @@ module Autobot
 
         process = Process.new(
           "sh", ["-c", command],
+          output: stdout_write,
+          error: stderr_write
+        )
+
+        stdout_write.close
+        stderr_write.close
+
+        stdout_channel = Channel(String).new(1)
+        stderr_channel = Channel(String).new(1)
+
+        spawn { stdout_channel.send(stdout_read.gets_to_end) }
+        spawn { stderr_channel.send(stderr_read.gets_to_end) }
+
+        completed = Channel(Process::Status).new(1)
+        spawn do
+          status = process.wait
+          completed.send(status)
+        end
+
+        select
+        when completed.receive
+          # Process completed
+        when timeout(timeout.seconds)
+          process.signal(Signal::TERM)
+          sleep 0.5.seconds
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        end
+
+        stdout_text = stdout_channel.receive
+        stderr_text = stderr_channel.receive
+
+        stdout_read.close
+        stderr_read.close
+
+        parts = [] of String
+        parts << stdout_text unless stdout_text.empty?
+        parts << "STDERR:\n#{stderr_text}" unless stderr_text.empty?
+
+        data = parts.empty? ? "[no output]" : parts.join("\n")
+        ToolResult.success(data)
+      end
+
+      private def exec_program_direct(program : String, args : Array(String), timeout : Int32) : ToolResult
+        stdout_read, stdout_write = IO.pipe
+        stderr_read, stderr_write = IO.pipe
+
+        process = Process.new(
+          program, args,
           output: stdout_write,
           error: stderr_write
         )
