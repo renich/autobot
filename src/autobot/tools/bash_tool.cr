@@ -74,14 +74,16 @@ module Autobot
         return [] of String if args_str.strip.empty?
 
         args = [] of String
-        current_arg = ""
+        # ⚡ Bolt Optimization: Use IO::Memory instead of String concatenation
+        # to significantly reduce memory allocations inside the character loop.
+        current_arg = IO::Memory.new
         in_quotes = false
         quote_char = '\0'
         escaped = false
 
         args_str.each_char do |char|
           if escaped
-            current_arg += char.to_s
+            current_arg << char
             escaped = false
             next
           end
@@ -95,7 +97,7 @@ module Autobot
                 in_quotes = false
                 quote_char = '\0'
               else
-                current_arg += char.to_s
+                current_arg << char
               end
             else
               in_quotes = true
@@ -103,20 +105,20 @@ module Autobot
             end
           when ' ', '\t'
             if in_quotes
-              current_arg += char.to_s
+              current_arg << char
             else
               unless current_arg.empty?
-                args << current_arg
-                current_arg = ""
+                args << current_arg.to_s
+                current_arg.clear
               end
             end
           else
-            current_arg += char.to_s
+            current_arg << char
           end
         end
 
         unless current_arg.empty?
-          args << current_arg
+          args << current_arg.to_s
         end
 
         args
