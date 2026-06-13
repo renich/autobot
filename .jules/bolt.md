@@ -1,0 +1,3 @@
+## 2026-06-13 - String Concatenation in Crystal Loops
+**Learning:** String concatenation (`+=`) inside a loop in Crystal allocates a new string object on every iteration, leading to significant memory overhead and garbage collection pressure when parsing strings character-by-character.
+**Action:** Replace `string += char` in loops with an `IO::Memory` buffer, building the result using `<<` and only converting `to_s` at the end (or clearing it with `.clear` to reuse the buffer).
