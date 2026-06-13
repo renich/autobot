@@ -148,13 +148,25 @@ module Autobot
           "--share-net",
           "--die-with-parent",
           "--chdir", workspace_real,
+          "--clearenv",
         ]
+        forward_env_vars_bwrap(args)
         args.push("--ro-bind", "/lib64", "/lib64") if Dir.exists?("/lib64")
         args.push("--tmpfs", "/tmp")
         args.push("--")
         args.concat(cmd_args)
 
         run_sandboxed_command("bwrap", args, timeout, max_output_size)
+      end
+
+      # Forward explicitly allowed environment variables to Bubblewrap.
+      # Only variables listed in `sandbox_env` config are forwarded.
+      def self.forward_env_vars_bwrap(args : Array(String)) : Nil
+        @@sandbox_env.each do |key|
+          if value = ENV[key]?
+            args.push("--setenv", key, value)
+          end
+        end
       end
 
       private def self.run_in_docker(
