@@ -260,7 +260,7 @@ module Autobot
         do_generate_content_native(model_path, system_text, gemini_tools, contents, max_tokens, temperature)
       end
 
-      private def create_cache(model_path : String, system_text : String, tools : Array(JSON::Any)?) : String?
+      private def create_cache(model_path : String, system_text : String, tools : Array(Hash(String, JSON::Any))?) : String?
         api_base = @api_base || AI_STUDIO_BASE
         url = "#{api_base}/cachedContents?key=#{@api_key}"
 
@@ -278,7 +278,7 @@ module Autobot
         end
 
         if tools && !tools.empty?
-          body["tools"] = JSON::Any.new(tools)
+          body["tools"] = JSON::Any.new(tools.map { |tool| JSON::Any.new(tool) })
         end
 
         headers = HTTP::Headers{"Content-Type" => "application/json", "User-Agent" => USER_AGENT}
@@ -307,7 +307,7 @@ module Autobot
 
         body = {
           "cachedContent"    => JSON::Any.new(cached_name),
-          "contents"         => JSON::Any.new(contents.map { |c| JSON::Any.new(c) }),
+          "contents"         => JSON::Any.new(contents.map { |content| JSON::Any.new(content) }),
           "generationConfig" => JSON::Any.new({
             "maxOutputTokens" => JSON::Any.new(max_tokens.to_i64),
             "temperature"     => JSON::Any.new(temperature),
@@ -331,7 +331,7 @@ module Autobot
         url = "#{api_base}/#{model_path}:generateContent?key=#{@api_key}"
 
         body = {
-          "contents"         => JSON::Any.new(contents.map { |c| JSON::Any.new(c) }),
+          "contents"         => JSON::Any.new(contents.map { |content| JSON::Any.new(content) }),
           "generationConfig" => JSON::Any.new({
             "maxOutputTokens" => JSON::Any.new(max_tokens.to_i64),
             "temperature"     => JSON::Any.new(temperature),
@@ -347,7 +347,7 @@ module Autobot
         end
 
         if tools && !tools.empty?
-          body["tools"] = JSON::Any.new(tools.map { |t| JSON::Any.new(t) })
+          body["tools"] = JSON::Any.new(tools.map { |tool| JSON::Any.new(tool) })
         end
 
         headers = HTTP::Headers{"Content-Type" => "application/json", "User-Agent" => USER_AGENT}
@@ -540,7 +540,6 @@ module Autobot
         [{"functionDeclarations" => JSON::Any.new(decls.map { |decl| JSON::Any.new(decl) })}]
       end
 
-      # ameba:disable Metrics/CyclomaticComplexity
       private def parse_native_response(body : String) : Response
         json = JSON.parse(body)
         # Handle both wrapped and unwrapped response
