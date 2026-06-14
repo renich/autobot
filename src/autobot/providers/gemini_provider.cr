@@ -178,22 +178,31 @@ module Autobot
         bare_model = effective_model.includes?("/") ? effective_model.split("/", 2).last : effective_model
 
         max_retries.times do |attempt|
-          headers = build_headers
-
           if use_oauth?
+            headers = build_headers
             project_id = ensure_project_id(headers)
             url = "#{CODE_ASSIST_BASE}:generateContent"
             body = build_code_assist_payload(messages, tools, bare_model, project_id)
-          else
-            # AI Studio OpenAI-compatible endpoint
-            url = "#{@api_base || AI_STUDIO_BASE}/chat/completions"
+            is_native = true
+          elsif @api_base
+            headers = build_headers
+            url = "#{@api_base}/chat/completions"
             body = build_openai_body(messages, tools, bare_model, max_tokens, temperature)
+            is_native = false
+          else
+            headers = HTTP::Headers{
+              "Content-Type"   => "application/json",
+              "x-goog-api-key" => @api_key,
+            }
+            url = "https://generativelanguage.googleapis.com/v1beta/models/#{bare_model}:generateContent"
+            body = build_native_payload(messages, tools, max_tokens, temperature)
+            is_native = true
           end
 
           response = HTTP::Client.post(url, headers: headers, body: body)
 
           if response.success?
-            return use_oauth? ? parse_native_response(response.body) : parse_openai_response(response.body)
+            return is_native ? parse_native_response(response.body) : parse_openai_response(response.body)
           end
 
           handle_error_response(response, attempt, max_retries, base_delay)
@@ -281,6 +290,24 @@ module Autobot
           "user_prompt_id" => JSON::Any.new("autobot-#{Time.local.to_unix}"),
           "request"        => JSON::Any.new(inner.transform_values { |val| val }),
         }.to_json
+      end
+
+      private def build_native_payload(messages, tools, max_tokens, temperature) : String
+        contents = map_messages_to_native(messages)
+        system_instr = extract_system_instruction(messages)
+        native_tools = map_tools_to_native(tools)
+
+        payload = {
+          "contents"          => JSON::Any.new(contents.map { |content_msg| JSON::Any.new(content_msg) }),
+          "systemInstruction" => system_instr ? JSON::Any.new(system_instr) : nil,
+          "tools"             => native_tools ? JSON::Any.new(native_tools.map { |tool| JSON::Any.new(tool) }) : nil,
+          "generationConfig"  => JSON::Any.new({
+            "temperature"     => JSON::Any.new(temperature),
+            "maxOutputTokens" => JSON::Any.new(max_tokens.to_i64),
+          } of String => JSON::Any),
+        }.compact
+
+        payload.to_json
       end
 
       private def map_messages_to_native(messages) : Array(Hash(String, JSON::Any))
