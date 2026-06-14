@@ -316,7 +316,11 @@ module Autobot
 
         headers = HTTP::Headers{"Content-Type" => "application/json", "User-Agent" => USER_AGENT}
         response = http_post(url, headers, body.to_json)
-        parse_native_response(response.body)
+        if response.success?
+          parse_native_response(response.body)
+        else
+          raise "Gemini API generateContent (cached) failed: #{response.status_code} - #{response.body}"
+        end
       end
 
       private def do_generate_content_native(
@@ -352,7 +356,11 @@ module Autobot
 
         headers = HTTP::Headers{"Content-Type" => "application/json", "User-Agent" => USER_AGENT}
         response = http_post(url, headers, body.to_json)
-        parse_native_response(response.body)
+        if response.success?
+          parse_native_response(response.body)
+        else
+          raise "Gemini API generateContent (native) failed: #{response.status_code} - #{response.body}"
+        end
       end
 
       private def handle_error_response(response, attempt, max_retries, base_delay)
@@ -419,7 +427,7 @@ module Autobot
           next if role == "system"
 
           role = "model" if role == "assistant"
-          role = "function" if role == "tool"
+          role = "user" if role == "tool"
 
           parts = build_native_parts(msg, role)
           contents << {
@@ -451,7 +459,7 @@ module Autobot
           append_native_tool_calls(parts, tcalls)
         end
 
-        if role == "function"
+        if msg["role"].as_s == "tool"
           append_native_tool_result(parts, msg)
         end
 
