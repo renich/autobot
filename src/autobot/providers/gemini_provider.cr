@@ -241,12 +241,17 @@ module Autobot
         end
 
         if name = @cached_name
-          response = do_generate_content_cached(model_path, name, contents, max_tokens, temperature)
-          unless response.error? && (response.content || "").includes?("404")
+          begin
+            response = do_generate_content_cached(model_path, name, contents, max_tokens, temperature)
             return response
+          rescue ex : Exception
+            if ex.message.try(&.includes?("CachedContent not found")) || ex.message.try(&.includes?("403")) || ex.message.try(&.includes?("404"))
+              Log.warn { "Cache #{name} expired or not found, recreating... Error: #{ex.message}" }
+              @cached_name = nil
+            else
+              raise ex
+            end
           end
-          Log.warn { "Cache #{name} expired or not found, recreating..." }
-          @cached_name = nil
         end
 
         if cache_content_str.size > 8000
