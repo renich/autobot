@@ -50,12 +50,9 @@ module Autobot
         session = session_manager.get_or_create(session_id)
         session.add_message("user", message)
 
-        print "Thinking..."
-
-        response = process_message(config, bus, tool_registry, session, message)
-
-        # Clear "Thinking..." line
-        print "\r\e[K"
+        response = with_spinner("Thinking...") do
+          process_message(config, bus, tool_registry, session, message)
+        end
 
         session.add_message("assistant", response)
         session_manager.save(session)
@@ -100,11 +97,10 @@ module Autobot
           history << command
 
           session.add_message("user", command)
-          print "Thinking..."
 
-          response = process_message(config, bus, tool_registry, session, command)
-
-          print "\r\e[K"
+          response = with_spinner("Thinking...") do
+            process_message(config, bus, tool_registry, session, command)
+          end
 
           session.add_message("assistant", response)
           session_manager.save(session)
@@ -195,6 +191,30 @@ module Autobot
         Dir.mkdir_p(history_file.parent) unless Dir.exists?(history_file.parent)
         entries = history.last(MAX_HISTORY_LINES)
         File.write(history_file, entries.join("\n") + "\n")
+      end
+
+      private def self.with_spinner(message : String, &)
+        done = Channel(Nil).new
+        spawn do
+          frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+          i = 0
+          loop do
+            print "\r\e[36m#{frames[i % frames.size]}\e[0m #{message}"
+            select
+            when done.receive
+              break
+            when timeout(100.milliseconds)
+              i += 1
+            end
+          end
+        end
+
+        begin
+          yield
+        ensure
+          done.send(nil)
+          print "\r\e[K"
+        end
       end
     end
   end
