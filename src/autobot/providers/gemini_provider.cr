@@ -432,7 +432,7 @@ module Autobot
           next if role == "system"
 
           role = "model" if role == "assistant"
-          role = "user" if role == "tool"
+          role = "user" if role == "tool" || role == "function"
 
           parts = build_native_parts(msg, role)
           contents << {
@@ -464,7 +464,7 @@ module Autobot
           append_native_tool_calls(parts, tcalls)
         end
 
-        if msg["role"].as_s == "tool"
+        if msg["role"].as_s == "tool" || msg["role"].as_s == "function"
           append_native_tool_result(parts, msg)
         end
 
