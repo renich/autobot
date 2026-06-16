@@ -772,12 +772,64 @@ module Autobot::Channels
         error: Process::Redirect::Pipe,
       )
 
-      # Read with size limit to prevent DoS (truncate at 4000 chars)
-      output = read_limited_io(process.output, 4000)
-      error_output = read_limited_io(process.error, 4000)
-      status = process.wait
+      # Use pipes and channels to prevent DoS and blocking on stderr/stdout
+      stdout_channel = Channel(String).new(1)
+      stderr_channel = Channel(String).new(1)
 
-      result = if status.success?
+      spawn do
+        begin
+          stdout_channel.send(read_limited_io(process.output, 4000))
+        rescue
+          stdout_channel.send("")
+        end
+      end
+
+      spawn do
+        begin
+          stderr_channel.send(read_limited_io(process.error, 4000))
+        rescue
+          stderr_channel.send("")
+        end
+      end
+
+      completed = Channel(Process::Status).new(1)
+      spawn do
+        begin
+          status = process.wait
+          completed.send(status)
+        rescue
+        end
+      end
+
+      timed_out = false
+      status = select
+      when s = completed.receive
+        s
+      when timeout(60.seconds)
+        timed_out = true
+        begin
+          process.signal(Signal::TERM)
+          sleep 0.5.seconds
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        rescue
+          # Ignore errors during process termination
+        end
+        Process::Status.new(255) # Timeout exit code
+      end
+
+      output = stdout_channel.receive
+      error_output = stderr_channel.receive
+
+      begin
+        process.output.close
+        process.error.close
+      rescue
+      end
+
+      result = if timed_out
+                 "Script failed: timed out after 60 seconds."
+               elsif status.success?
                  output.empty? ? "Script completed successfully." : output
                else
                  "Script failed (exit #{status.exit_code}):\n#{error_output}".strip
