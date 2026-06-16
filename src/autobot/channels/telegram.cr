@@ -87,7 +87,39 @@ module Autobot::Channels
 
     def self.split_message(text : String) : Array(String)
       return [text] if text.size <= TELEGRAM_MAX_LENGTH
-      split_by_paragraphs(text)
+      chunks = split_by_paragraphs(text)
+      balance_tags(chunks)
+    end
+
+    def self.balance_tags(chunks : Array(String)) : Array(String)
+      balanced = [] of String
+      open_tags = [] of String
+
+      chunks.each do |chunk|
+        prefix = open_tags.join
+        current_chunk = prefix + chunk
+
+        current_open_tags = [] of String
+        current_chunk.scan(HTML_TAG_REGEX).each do |match|
+          if match[1] == "/"
+            current_open_tags.pop unless current_open_tags.empty?
+          else
+            current_open_tags << match[0]
+          end
+        end
+
+        suffix = current_open_tags.reverse.compact_map { |tag|
+          if m = tag.match(/<([a-z]+)/)
+            "</#{m[1]}>"
+          end
+        }.join
+
+        current_chunk = current_chunk + suffix
+        balanced << current_chunk
+        open_tags = current_open_tags
+      end
+
+      balanced
     end
 
     private def self.extract_code_blocks(text : String, store : Array(String)) : String
