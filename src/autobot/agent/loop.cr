@@ -103,7 +103,6 @@ module Autobot::Agent
           @bus.publish_outbound(response) if response
         rescue ex : Exception
           Log.error { "Error processing message: #{ex.message}" }
-          Log.error { ex.backtrace.join("\n") }
 
           @bus.publish_outbound(Bus::OutboundMessage.new(
             channel: msg.channel,
