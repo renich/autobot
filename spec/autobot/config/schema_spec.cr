@@ -173,6 +173,7 @@ describe Autobot::Config::Config do
   describe "#workspace_path" do
     it "expands home directory with defaults" do
       config = empty_config
+      config.config_path = Path["/home/user/autobot/config.yml"]
       path = config.workspace_path
       path.to_s.should_not contain("~")
       path.to_s.should contain("autobot")
