@@ -38,6 +38,26 @@ module Autobot
         plugin_registry.try(&.stop_all)
       end
 
+      private def self.with_spinner(&)
+        done = false
+        spawn do
+          frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+          i = 0
+          while !done
+            print "\r\e[K\e[36m#{frames[i % frames.size]}\e[0m Thinking..."
+            i += 1
+            sleep 0.1.seconds
+          end
+        end
+
+        begin
+          yield
+        ensure
+          done = true
+          print "\r\e[K"
+        end
+      end
+
       private def self.run_single(
         config : Config::Config,
         bus : Bus::MessageBus,
@@ -50,12 +70,9 @@ module Autobot
         session = session_manager.get_or_create(session_id)
         session.add_message("user", message)
 
-        print "Thinking..."
-
-        response = process_message(config, bus, tool_registry, session, message)
-
-        # Clear "Thinking..." line
-        print "\r\e[K"
+        response = with_spinner do
+          process_message(config, bus, tool_registry, session, message)
+        end
 
         session.add_message("assistant", response)
         session_manager.save(session)
@@ -100,11 +117,10 @@ module Autobot
           history << command
 
           session.add_message("user", command)
-          print "Thinking..."
 
-          response = process_message(config, bus, tool_registry, session, command)
-
-          print "\r\e[K"
+          response = with_spinner do
+            process_message(config, bus, tool_registry, session, command)
+          end
 
           session.add_message("assistant", response)
           session_manager.save(session)
