@@ -151,6 +151,12 @@ module Autobot
         ]
         args.push("--ro-bind", "/lib64", "/lib64") if Dir.exists?("/lib64")
         args.push("--tmpfs", "/tmp")
+        args.push("--clearenv")
+        @@sandbox_env.each do |key|
+          if value = ENV[key]?
+            args.push("--setenv", key, value)
+          end
+        end
         args.push("--")
         args.concat(cmd_args)
 
