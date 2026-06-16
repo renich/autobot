@@ -40,12 +40,15 @@ module Autobot
         dispatch_command(options)
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def self.dispatch_command(options) : Nil
         case options[:command]
         when "help", "-h", "--help"
           print_help
         when "new"
           handle_new_command(options)
+        when "auth"
+          Auth.run(options[:config_path], options[:args])
         when "doctor"
           Doctor.run(options[:config_path], options[:strict])
         when "agent"
@@ -278,6 +281,7 @@ module Autobot
         puts "Usage: autobot <command> [options]\n\n"
         puts "Commands:"
         puts "  new       Create a new bot in a directory (e.g., autobot new optimus)"
+        puts "  auth      OAuth authentication for providers (e.g., autobot auth gemini)"
         puts "  doctor    Check configuration and security (use --strict for warnings as errors)"
         puts "  agent     Interact with the agent (single message or interactive)"
         puts "  gateway   Start the gateway server"

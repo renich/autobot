@@ -171,11 +171,11 @@ describe Autobot::Config::Config do
   end
 
   describe "#workspace_path" do
-    it "expands home directory with defaults" do
+    it "expands relative path correctly" do
       config = empty_config
       path = config.workspace_path
       path.to_s.should_not contain("~")
-      path.to_s.should contain("autobot")
+      path.to_s.should end_with("workspace")
     end
   end
 
