@@ -297,17 +297,20 @@ module Autobot
 
       private def self.read_limited_output(io : IO, max_size : Int32) : String
         buffer = IO::Memory.new
-        bytes_read = 0
+        bytes_read = 0_i64
         chunk = Bytes.new(IO_BUFFER_SIZE)
+        truncated = false
 
         while (n = io.read(chunk)) > 0
-          bytes_read += n
-          if bytes_read > max_size
-            buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
-            buffer << "\n... (output truncated at #{max_size} bytes)"
-            break
+          if bytes_read < max_size
+            to_write = Math.min(n, max_size - bytes_read).to_i
+            buffer.write(chunk[0, to_write])
+            if bytes_read + n > max_size && !truncated
+              buffer << "\n... (output truncated at #{max_size} bytes)"
+              truncated = true
+            end
           end
-          buffer.write(chunk[0, n])
+          bytes_read += n
         end
 
         buffer.to_s

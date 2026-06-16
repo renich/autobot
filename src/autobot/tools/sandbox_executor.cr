@@ -186,8 +186,8 @@ module Autobot
         stdout_channel = Channel(String).new(1)
         stderr_channel = Channel(String).new(1)
 
-        spawn { stdout_channel.send(stdout_read.gets_to_end) }
-        spawn { stderr_channel.send(stderr_read.gets_to_end) }
+        spawn { stdout_channel.send(read_limited_output(stdout_read, Sandbox::MAX_LIST_OUTPUT * 10)) }
+        spawn { stderr_channel.send(read_limited_output(stderr_read, Sandbox::MAX_LIST_OUTPUT * 10)) }
 
         completed = Channel(Process::Status).new(1)
         spawn do
@@ -217,6 +217,29 @@ module Autobot
 
         data = parts.empty? ? "[no output]" : parts.join("\n")
         ToolResult.success(data)
+      end
+
+      private def read_limited_output(io : IO, max_size : Int32) : String
+        buffer = IO::Memory.new
+        bytes_read = 0_i64
+        chunk = Bytes.new(4096)
+        truncated = false
+
+        while (n = io.read(chunk)) > 0
+          if bytes_read < max_size
+            to_write = Math.min(n, max_size - bytes_read).to_i
+            buffer.write(chunk[0, to_write])
+            if bytes_read + n > max_size && !truncated
+              buffer << "\n... (output truncated at #{max_size} bytes)"
+              truncated = true
+            end
+          end
+          bytes_read += n
+        end
+
+        buffer.to_s
+      rescue
+        buffer.to_s
       end
     end
   end
