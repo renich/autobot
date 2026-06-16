@@ -1,0 +1,1 @@
+## 2026-06-12 - Crystal CLI Output Buffering\n**Learning:** In Crystal, the `print` statement buffers output and does not display immediately like `puts`. This can lead to frozen or delayed user prompts in CLI tools.\n**Action:** Always append `STDOUT.flush` after using `print` for interactive CLI prompts to ensure real-time visual feedback.
