@@ -35,7 +35,6 @@ module Autobot::Bus
                 block.call(msg)
               rescue ex
                 Log.error { "Error processing inbound message: #{ex.message}" }
-                Log.error { ex.backtrace.join("\n") }
               end
             when timeout(5.seconds)
               # Periodic check for @stopped
@@ -71,7 +70,6 @@ module Autobot::Bus
                 block.call(msg)
               rescue ex
                 Log.error { "Error processing outbound message: #{ex.message}" }
-                Log.error { ex.backtrace.join("\n") }
               end
             when timeout(5.seconds)
               # Periodic check for @stopped

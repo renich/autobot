@@ -105,7 +105,6 @@ module Autobot::Tools
       rescue ex : Exception
         error_msg = "Error executing #{name}"
         Log.error { error_msg }
-        Log.error { ex.backtrace.join("\n") }
         error_msg
       end
     end

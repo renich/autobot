@@ -64,7 +64,6 @@ module Autobot
         end
       rescue ex
         Log.error { "LLM request failed: #{ex.message}" }
-        Log.debug { ex.inspect_with_backtrace }
         Response.new(content: "Error calling LLM: #{ex.message}", finish_reason: "error")
       end
 
