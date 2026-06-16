@@ -3,6 +3,7 @@ require "json"
 require "log"
 require "uri"
 require "./result"
+require "../log_sanitizer"
 
 module Autobot
   module Tools
@@ -131,7 +132,7 @@ module Autobot
           return ToolResult.access_denied("URL validation failed: #{error}")
         end
 
-        Log.info { "Fetching: #{url_str}" }
+        Log.info { "Fetching: #{LogSanitizer.sanitize_url(url_str)}" }
 
         uri = URI.parse(url_str)
         response = fetch_with_redirects(uri)

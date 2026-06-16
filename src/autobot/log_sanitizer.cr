@@ -39,6 +39,11 @@ module Autobot
     def self.sanitize_url(url : String) : String
       uri = URI.parse(url)
 
+      if uri.user || uri.password
+        uri.user = "[REDACTED]" if uri.user
+        uri.password = "[REDACTED]" if uri.password
+      end
+
       if query = uri.query
         sanitized_params = query.split('&').map do |param|
           key = param.split('=', 2).first
