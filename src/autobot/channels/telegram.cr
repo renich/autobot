@@ -151,36 +151,57 @@ module Autobot::Channels
 
     private def self.split_by_paragraphs(text : String) : Array(String)
       chunks = [] of String
-      current = ""
+      current = IO::Memory.new
+      current_size = 0
 
       text.split("\n\n").each do |para|
-        candidate = current.empty? ? para : "#{current}\n\n#{para}"
-        if candidate.size <= TELEGRAM_MAX_LENGTH
-          current = candidate
+        candidate_size = current_size == 0 ? para.size : current_size + 2 + para.size
+
+        if candidate_size <= TELEGRAM_MAX_LENGTH
+          current << "\n\n" if current_size > 0
+          current << para
+          current_size = candidate_size
         else
-          chunks << current unless current.empty?
-          current = accumulate_lines(para, chunks)
+          chunks << current.to_s if current_size > 0
+          current.clear
+
+          # Now try to accumulate this long paragraph line-by-line
+          accumulated = accumulate_lines(para, chunks)
+          unless accumulated.empty?
+            current << accumulated
+            current_size = accumulated.size
+          else
+            current_size = 0
+          end
         end
       end
 
-      chunks << current unless current.empty?
+      chunks << current.to_s if current_size > 0
       chunks
     end
 
     private def self.accumulate_lines(para : String, chunks : Array(String)) : String
       return para if para.size <= TELEGRAM_MAX_LENGTH
 
-      current = ""
+      current = IO::Memory.new
+      current_size = 0
+
       para.split("\n").each do |line|
-        candidate = current.empty? ? line : "#{current}\n#{line}"
-        if candidate.size <= TELEGRAM_MAX_LENGTH
-          current = candidate
+        candidate_size = current_size == 0 ? line.size : current_size + 1 + line.size
+
+        if candidate_size <= TELEGRAM_MAX_LENGTH
+          current << "\n" if current_size > 0
+          current << line
+          current_size = candidate_size
         else
-          chunks << current unless current.empty?
-          current = line[0, TELEGRAM_MAX_LENGTH]
+          chunks << current.to_s if current_size > 0
+          current.clear
+          current << line[0, TELEGRAM_MAX_LENGTH]
+          current_size = line[0, TELEGRAM_MAX_LENGTH].size
         end
       end
-      current
+
+      current.to_s
     end
   end
 
