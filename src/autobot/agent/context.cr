@@ -235,7 +235,11 @@ module Autobot::Agent
 
         content = text
         if media && !media.empty?
-          media_info = media.map { |attachment| "[#{attachment.type}: #{attachment.file_path || attachment.url}]" }.join("\n")
+          media_info = String.build do |io|
+            media.join(io, "\n") do |attachment, att_io|
+              att_io << "[" << attachment.type << ": " << (attachment.file_path || attachment.url) << "]"
+            end
+          end
           content = "#{content}\n\nMedia:\n#{media_info}"
         end
         JSON::Any.new(content)
