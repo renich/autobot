@@ -772,10 +772,38 @@ module Autobot::Channels
         error: Process::Redirect::Pipe,
       )
 
-      # Read with size limit to prevent DoS (truncate at 4000 chars)
-      output = read_limited_io(process.output, 4000)
-      error_output = read_limited_io(process.error, 4000)
-      status = process.wait
+      stdout_channel = ::Channel(String).new(1)
+      stderr_channel = ::Channel(String).new(1)
+
+      spawn { stdout_channel.send(read_limited_io(process.output, 4000)) }
+      spawn { stderr_channel.send(read_limited_io(process.error, 4000)) }
+
+      completed = ::Channel(Process::Status).new(1)
+      spawn do
+        status = process.wait
+        completed.send(status)
+      end
+
+      status = select
+      when s = completed.receive
+        s
+      when timeout(60.seconds)
+        begin
+          process.signal(Signal::TERM)
+          sleep 2.seconds
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        rescue
+          # Ignore
+        end
+        Process::Status.new(124) # timeout exit code
+      end
+
+      process.output.close rescue nil
+      process.error.close rescue nil
+
+      output = stdout_channel.receive
+      error_output = stderr_channel.receive
 
       result = if status.success?
                  output.empty? ? "Script completed successfully." : output
@@ -968,20 +996,25 @@ module Autobot::Channels
       buffer = IO::Memory.new
       bytes_read = 0
       chunk = Bytes.new(4096)
+      truncated = false
 
       while (n = io.read(chunk)) > 0
         bytes_read += n
         if bytes_read > max_size
-          buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
-          buffer << "\n... (truncated)"
-          break
+          unless truncated
+            buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
+            buffer << "\n... (truncated)"
+            truncated = true
+          end
+          # Continue reading to prevent process from hanging on full pipe
+        else
+          buffer.write(chunk[0, n])
         end
-        buffer.write(chunk[0, n])
       end
 
       buffer.to_s
     rescue
-      ""
+      buffer.to_s
     end
 
     private def send_reply(chat_id : String, text : String) : Nil
