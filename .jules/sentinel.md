@@ -1,0 +1,4 @@
+## 2025-03-01 - Process Pipe Deadlock & DoS
+**Vulnerability:** Reading IO pipes from `Process.new` (like stdout/stderr) sequentially or breaking early when `max_size` is reached causes the child process to deadlock and hang indefinitely if it tries to write to a full pipe, leading to Resource Exhaustion and DoS. `process.wait` also blocks indefinitely without a timeout.
+**Learning:** `Process.new` streams must be drained continuously to prevent the process from hanging due to pipe backpressure. Breaking out of the read loop early when a size limit is reached prevents the child process from writing further.
+**Prevention:** Use a bounded reading loop that continues to read and discard excess data until EOF instead of breaking early. Read `stdout` and `stderr` concurrently using `spawn` and `Channel`, and use `select` with a timeout instead of unbounded `process.wait`.
