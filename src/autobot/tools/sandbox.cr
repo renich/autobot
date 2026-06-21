@@ -303,15 +303,20 @@ module Autobot
         buffer = IO::Memory.new
         bytes_read = 0
         chunk = Bytes.new(IO_BUFFER_SIZE)
+        truncated = false
 
         while (n = io.read(chunk)) > 0
-          bytes_read += n
-          if bytes_read > max_size
-            buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
-            buffer << "\n... (output truncated at #{max_size} bytes)"
-            break
+          if !truncated
+            bytes_read += n
+            if bytes_read > max_size
+              buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
+              buffer << "\n... (output truncated at #{max_size} bytes)"
+              truncated = true
+              # Do not break; continue draining the pipe to prevent process deadlock
+            else
+              buffer.write(chunk[0, n])
+            end
           end
-          buffer.write(chunk[0, n])
         end
 
         buffer.to_s
