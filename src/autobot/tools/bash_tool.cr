@@ -55,7 +55,15 @@ module Autobot
 
       private def run_script(args_str : String) : String
         args = parse_args(args_str)
-        command = "#{@script_path} #{args.map { |arg| shell_escape(arg) }.join(" ")}"
+        # ⚡ Optimization: Use String.build instead of Array#map + join
+        # This avoids intermediate array allocations for the formatted arguments
+        # and the final string concatenation, reducing memory pressure.
+        command = String.build do |str|
+          str << @script_path
+          args.each do |arg|
+            str << ' ' << shell_escape(arg)
+          end
+        end
 
         result = @executor.exec(command, timeout: SCRIPT_TIMEOUT)
 
