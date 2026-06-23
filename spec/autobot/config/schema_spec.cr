@@ -175,7 +175,7 @@ describe Autobot::Config::Config do
       config = empty_config
       path = config.workspace_path
       path.to_s.should_not contain("~")
-      path.to_s.should contain("autobot")
+      path.absolute?.should be_true
     end
   end
 
