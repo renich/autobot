@@ -235,7 +235,15 @@ module Autobot::Agent
 
         content = text
         if media && !media.empty?
-          media_info = media.map { |attachment| "[#{attachment.type}: #{attachment.file_path || attachment.url}]" }.join("\n")
+          # ⚡ Bolt: Using String.build and IO yielding to construct the media info string.
+          # This avoids the intermediate Array allocation from `map` and the intermediate String
+          # allocations from string interpolation before `join`, reducing memory overhead and
+          # GC pressure for media-heavy payloads.
+          media_info = String.build do |io|
+            media.join(io, "\n") do |attachment, inner_io|
+              inner_io << "[" << attachment.type << ": " << (attachment.file_path || attachment.url) << "]"
+            end
+          end
           content = "#{content}\n\nMedia:\n#{media_info}"
         end
         JSON::Any.new(content)
