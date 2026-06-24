@@ -1,0 +1,4 @@
+## 2025-03-05 - SQLite Command Injection via Dot-Commands
+**Vulnerability:** The SQLite plugin allows arbitrary SQL queries from the LLM, but failed to restrict dot-commands. A malicious prompt could instruct the LLM to use `.shell` or `.system` within `sqlite3` to achieve remote code execution inside the sandbox, potentially bypassing sandbox controls depending on the configuration.
+**Learning:** Even when inputs are technically parameterized for SQL context or executed via a CLI tool, the CLI tool's own meta-commands (like sqlite3 dot-commands) can become a vector for command injection if untrusted inputs are passed as general execution strings.
+**Prevention:** Always use the `-safe` flag when executing `sqlite3` CLI tools with untrusted queries or commands. The `-safe` flag disables dot-commands that can have dangerous side effects (like executing shell commands or writing to arbitrary files).
