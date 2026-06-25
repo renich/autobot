@@ -55,7 +55,13 @@ module Autobot
 
       private def run_script(args_str : String) : String
         args = parse_args(args_str)
-        command = "#{@script_path} #{args.map { |arg| shell_escape(arg) }.join(" ")}"
+
+        args_joined = String.build do |io|
+          args.join(io, " ") do |arg, io2|
+            io2 << shell_escape(arg)
+          end
+        end
+        command = "#{@script_path} #{args_joined}"
 
         result = @executor.exec(command, timeout: SCRIPT_TIMEOUT)
 

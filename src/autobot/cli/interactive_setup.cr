@@ -209,7 +209,12 @@ module Autobot
         if selected.empty?
           output.puts "✓ CLI only\n"
         else
-          output.puts "✓ #{selected.map { |channel_key| CHANNELS[channel_key] }.join(", ")}\n"
+          joined_channels = String.build do |io|
+            selected.join(io, ", ") do |channel_key, io2|
+              io2 << CHANNELS[channel_key]
+            end
+          end
+          output.puts "✓ #{joined_channels}\n"
         end
 
         selected
