@@ -1025,6 +1025,30 @@ describe Autobot::Cron::Service do
       FileUtils.rm_rf(tmp) if tmp
     end
 
+    it "limits stored exec command output size to prevent E2BIG errors" do
+      tmp = TestHelper.tmp_dir
+      service = Autobot::Cron::Service.new(store_path: tmp / "cron.json", sandbox_config: "none")
+
+      job = service.add_job(
+        name: "exec_large",
+        schedule: Autobot::Cron::CronSchedule.new(kind: Autobot::Cron::ScheduleKind::Every, every_ms: 60000_i64),
+        kind: Autobot::Cron::PayloadKind::Exec,
+        command: "yes x | head -n 40000 | tr -d '\\n'"
+      )
+
+      service.run_job(job.id, force: true)
+
+      jobs = service.list_jobs
+      last_output = jobs.first.state.last_output
+      last_output.should_not be_nil
+      if output = last_output
+        output.bytesize.should be <= 33000
+        output.should contain("Output truncated due to size limit")
+      end
+    ensure
+      FileUtils.rm_rf(tmp) if tmp
+    end
+
     it "does not call on_job for exec jobs" do
       tmp = TestHelper.tmp_dir
       on_job_called = false
