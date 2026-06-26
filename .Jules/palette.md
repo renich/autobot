@@ -1,0 +1,3 @@
+## 2025-03-01 - Add immediate visual feedback for CLI prompts and loading states
+**Learning:** In Crystal CLI applications, `print` statements do not automatically flush to the output buffer like `puts` does. This can cause interactive prompts (e.g., `print "You: "`) or loading states (e.g., `print "Thinking..."`) to not appear on the screen immediately, leading to a confusing UX where the user doesn't know if the application is waiting for input or processing.
+**Action:** Always append `STDOUT.flush` after `print` statements in Crystal CLI scripts to ensure immediate visual feedback for the user.
