@@ -59,6 +59,11 @@ module Autobot
         limit = params["limit"]?.try(&.as_i) || 50
         limit = 100 if limit > 100
 
+        # Prevent directory traversal
+        unless chat_id.match(/^[a-zA-Z0-9_@-]+$/)
+          return Tools::ToolResult.error("Invalid chat_id format. Must only contain alphanumeric characters, underscores, hyphens, and optional '@'.")
+        end
+
         log_path = @workspace / "data" / "chat_logs" / "telegram_#{chat_id}.log"
 
         unless File.exists?(log_path.to_s)
