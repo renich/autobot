@@ -75,6 +75,7 @@ module Autobot
           code = params["code"]?
           if code && params["state"]? == state
             context.response.print SUCCESS_HTML
+            flush_response(context.response) # deliver the page before the server is torn down
             result_chan.send(code)
           else
             context.response.status = HTTP::Status::BAD_REQUEST
@@ -106,8 +107,7 @@ module Autobot
           nil
         end
 
-        # Small delay to let browser finish request, then close
-        spawn { sleep 1.second; server.close } rescue nil
+        close_callback_server(server)
 
         if auth_code
           puts "✓ Received authorization code. Exchanging for tokens..."
@@ -123,6 +123,20 @@ module Autobot
 
       private def self.build_auth_url(client_id, redirect_uri, scopes, state, challenge)
         "#{OAUTH_AUTH_URL}?client_id=#{client_id}&redirect_uri=#{URI.encode_www_form(redirect_uri)}&response_type=code&scope=#{scopes}&state=#{state}&code_challenge=#{challenge}&code_challenge_method=S256&access_type=offline&prompt=consent"
+      end
+
+      # Best-effort: push the response to the browser before we signal success.
+      # If the browser already disconnected, ignore it — the code still matters.
+      private def self.flush_response(response : HTTP::Server::Response) : Nil
+        response.close
+      rescue ex
+        Log.debug { "OAuth callback response flush failed: #{ex.message}" }
+      end
+
+      private def self.close_callback_server(server : HTTP::Server) : Nil
+        server.close
+      rescue ex
+        Log.debug { "Error closing OAuth callback server: #{ex.message}" }
       end
 
       private def self.find_available_port : Int32
