@@ -51,6 +51,7 @@ module Autobot
       @token_mutex : Mutex = Mutex.new
       @project_id : String?
 
+      @cache_mutex : Mutex = Mutex.new
       @cached_name : String? = nil
       @cached_hash : UInt64 = 0_u64
 
@@ -188,9 +189,7 @@ module Autobot
           end
         end
 
-        Log.warn { "Could not detect project ID, falling back to 'autobot'" }
-        @project_id = "autobot"
-        "autobot"
+        raise "Could not detect an authorized Google Cloud project for the Gemini Code Assist API. Verify your OAuth account has Code Assist access."
       end
 
       def chat(
@@ -245,69 +244,58 @@ module Autobot
         temperature : Float64,
       ) : Response
         system_text = extract_system_prompt_text(messages)
-        user_history = reject_system_messages(messages)
-        contents = map_messages_to_native(user_history)
+        contents = map_messages_to_native(reject_system_messages(messages))
         gemini_tools = map_tools_to_native(tools)
 
         cache_content_str = system_text + (tools ? tools.to_json : "")
         current_hash = cache_content_str.hash
 
-        if @cached_hash != current_hash
-          @cached_name = nil
+        cached_name = @cache_mutex.synchronize do
+          @cached_name = nil if @cached_hash != current_hash
+          @cached_name
         end
 
-        if name = @cached_name
+        if cached_name
           begin
-            response = do_generate_content_cached(model_path, name, contents, max_tokens, temperature)
-            return response
+            return do_generate_content_cached(model_path, cached_name, contents, max_tokens, temperature)
           rescue ex : Exception
-            if ex.message.try(&.includes?("CachedContent not found")) || ex.message.try(&.includes?("403")) || ex.message.try(&.includes?("404"))
-              Log.warn { "Cache #{name} expired or not found, recreating... Error: #{ex.message}" }
-              @cached_name = nil
-            else
-              raise ex
-            end
+            raise ex unless cache_missing?(ex)
+            Log.warn { "Cache #{cached_name} expired or not found, recreating... Error: #{ex.message}" }
+            @cache_mutex.synchronize { @cached_name = nil }
           end
         end
 
         if cache_content_str.size > CACHE_MIN_CONTENT_SIZE
-          @cached_name = create_cache(model_path, system_text, gemini_tools)
-          if name = @cached_name
-            @cached_hash = current_hash
-            return do_generate_content_cached(model_path, name, contents, max_tokens, temperature)
+          if created = create_cache(model_path, system_text, gemini_tools)
+            @cache_mutex.synchronize do
+              @cached_name = created
+              @cached_hash = current_hash
+            end
+            return do_generate_content_cached(model_path, created, contents, max_tokens, temperature)
           end
         end
 
         do_generate_content_native(model_path, system_text, gemini_tools, contents, max_tokens, temperature)
       end
 
-      private def create_cache(model_path : String, system_text : String, tools : Array(Hash(String, JSON::Any))?) : String?
-        api_base = @api_base || AI_STUDIO_BASE
-        url = "#{api_base}/cachedContents?key=#{@api_key}"
+      private def cache_missing?(ex : Exception) : Bool
+        message = ex.message
+        return false unless message
+        message.includes?("CachedContent not found") || message.includes?("403") || message.includes?("404")
+      end
 
+      private def create_cache(model_path : String, system_text : String, tools : Array(Hash(String, JSON::Any))?) : String?
+        url = "#{@api_base || AI_STUDIO_BASE}/cachedContents"
         body = {
           "model" => JSON::Any.new(model_path),
           "ttl"   => JSON::Any.new(CACHE_TTL),
         } of String => JSON::Any
+        body["systemInstruction"] = build_system_instruction(system_text) unless system_text.empty?
+        body["tools"] = build_tools_field(tools) if tools && !tools.empty?
 
-        unless system_text.empty?
-          body["systemInstruction"] = JSON::Any.new({
-            "parts" => JSON::Any.new([
-              JSON::Any.new({"text" => JSON::Any.new(system_text)} of String => JSON::Any),
-            ] of JSON::Any),
-          } of String => JSON::Any)
-        end
-
-        if tools && !tools.empty?
-          body["tools"] = JSON::Any.new(tools.map { |tool| JSON::Any.new(tool) })
-        end
-
-        headers = HTTP::Headers{"Content-Type" => "application/json", "User-Agent" => USER_AGENT}
-        response = http_post(url, headers, body.to_json)
-
+        response = http_post(url, ai_studio_headers, body.to_json)
         if response.success?
-          json = JSON.parse(response.body)
-          name = json["name"]?.try(&.as_s?)
+          name = JSON.parse(response.body)["name"]?.try(&.as_s?)
           Log.info { "Created explicit Gemini cache: #{name}" }
           name
         else
@@ -323,25 +311,12 @@ module Autobot
         max_tokens : Int32,
         temperature : Float64,
       ) : Response
-        api_base = @api_base || AI_STUDIO_BASE
-        url = "#{api_base}/#{model_path}:generateContent?key=#{@api_key}"
-
         body = {
           "cachedContent"    => JSON::Any.new(cached_name),
-          "contents"         => JSON::Any.new(contents.map { |content| JSON::Any.new(content) }),
-          "generationConfig" => JSON::Any.new({
-            "maxOutputTokens" => JSON::Any.new(max_tokens.to_i64),
-            "temperature"     => JSON::Any.new(temperature),
-          } of String => JSON::Any),
+          "contents"         => native_contents(contents),
+          "generationConfig" => generation_config(max_tokens, temperature),
         } of String => JSON::Any
-
-        headers = HTTP::Headers{"Content-Type" => "application/json", "User-Agent" => USER_AGENT}
-        response = http_post(url, headers, body.to_json)
-        if response.success?
-          parse_native_response(response.body)
-        else
-          raise "Gemini API generateContent (cached) failed: #{response.status_code} - #{response.body}"
-        end
+        post_generate_content(model_path, body, "cached")
       end
 
       private def do_generate_content_native(
@@ -352,36 +327,54 @@ module Autobot
         max_tokens : Int32,
         temperature : Float64,
       ) : Response
-        api_base = @api_base || AI_STUDIO_BASE
-        url = "#{api_base}/#{model_path}:generateContent?key=#{@api_key}"
-
         body = {
-          "contents"         => JSON::Any.new(contents.map { |content| JSON::Any.new(content) }),
-          "generationConfig" => JSON::Any.new({
-            "maxOutputTokens" => JSON::Any.new(max_tokens.to_i64),
-            "temperature"     => JSON::Any.new(temperature),
-          } of String => JSON::Any),
+          "contents"         => native_contents(contents),
+          "generationConfig" => generation_config(max_tokens, temperature),
         } of String => JSON::Any
+        body["systemInstruction"] = build_system_instruction(system_text) unless system_text.empty?
+        body["tools"] = build_tools_field(tools) if tools && !tools.empty?
+        post_generate_content(model_path, body, "native")
+      end
 
-        unless system_text.empty?
-          body["systemInstruction"] = JSON::Any.new({
-            "parts" => JSON::Any.new([
-              JSON::Any.new({"text" => JSON::Any.new(system_text)} of String => JSON::Any),
-            ] of JSON::Any),
-          } of String => JSON::Any)
-        end
-
-        if tools && !tools.empty?
-          body["tools"] = JSON::Any.new(tools.map { |tool| JSON::Any.new(tool) })
-        end
-
-        headers = HTTP::Headers{"Content-Type" => "application/json", "User-Agent" => USER_AGENT}
-        response = http_post(url, headers, body.to_json)
+      private def post_generate_content(model_path : String, body : Hash(String, JSON::Any), label : String) : Response
+        url = "#{@api_base || AI_STUDIO_BASE}/#{model_path}:generateContent"
+        response = http_post(url, ai_studio_headers, body.to_json)
         if response.success?
           parse_native_response(response.body)
         else
-          raise "Gemini API generateContent (native) failed: #{response.status_code} - #{response.body}"
+          raise "Gemini API generateContent (#{label}) failed: #{response.status_code} - #{response.body}"
         end
+      end
+
+      private def ai_studio_headers : HTTP::Headers
+        HTTP::Headers{
+          "Content-Type"   => "application/json",
+          "User-Agent"     => USER_AGENT,
+          "x-goog-api-key" => @api_key,
+        }
+      end
+
+      private def generation_config(max_tokens : Int32, temperature : Float64) : JSON::Any
+        JSON::Any.new({
+          "maxOutputTokens" => JSON::Any.new(max_tokens.to_i64),
+          "temperature"     => JSON::Any.new(temperature),
+        } of String => JSON::Any)
+      end
+
+      private def native_contents(contents : Array(Hash(String, JSON::Any))) : JSON::Any
+        JSON::Any.new(contents.map { |content| JSON::Any.new(content) })
+      end
+
+      private def build_system_instruction(system_text : String) : JSON::Any
+        JSON::Any.new({
+          "parts" => JSON::Any.new([
+            JSON::Any.new({"text" => JSON::Any.new(system_text)} of String => JSON::Any),
+          ] of JSON::Any),
+        } of String => JSON::Any)
+      end
+
+      private def build_tools_field(tools : Array(Hash(String, JSON::Any))) : JSON::Any
+        JSON::Any.new(tools.map { |tool| JSON::Any.new(tool) })
       end
 
       private def handle_error_response(response, attempt)
@@ -410,16 +403,16 @@ module Autobot
         native_tools = map_tools_to_native(tools)
 
         inner = {
-          "contents"          => JSON::Any.new(contents.map { |content_msg| JSON::Any.new(content_msg) }),
+          "contents"          => native_contents(contents),
           "systemInstruction" => system_instr ? JSON::Any.new(system_instr) : nil,
-          "tools"             => native_tools ? JSON::Any.new(native_tools.map { |tool| JSON::Any.new(tool) }) : nil,
+          "tools"             => native_tools ? build_tools_field(native_tools) : nil,
         }.compact
 
         {
           "model"          => JSON::Any.new(model),
           "project"        => JSON::Any.new(project_id),
           "user_prompt_id" => JSON::Any.new("autobot-#{Time.local.to_unix}"),
-          "request"        => JSON::Any.new(inner.transform_values { |val| val }),
+          "request"        => JSON::Any.new(inner),
         }.to_json
       end
 
@@ -476,7 +469,7 @@ module Autobot
               res = [] of Hash(String, JSON::Any)
               thought_parts.each do |tpart|
                 if tp_h = tpart.as_h?
-                  res << tp_h.transform_values { |val| val }
+                  res << tp_h
                 end
               end
               return res
@@ -608,11 +601,13 @@ module Autobot
                 name = fcall["name"].as_s
                 args = fcall["args"]?.try(&.as_h) || {} of String => JSON::Any
                 thought_sig = part["thoughtSignature"]?.try(&.as_s?)
+                # Thought parts belong to the whole turn; carry them once (replay
+                # reads them from the first tool call) instead of on every call.
                 tool_calls << ToolCall.new(
                   id: "call_#{Random::Secure.hex(8)}",
                   name: name,
                   arguments: args,
-                  extra_content: extra,
+                  extra_content: tool_calls.empty? ? extra : nil,
                   thought_signature: thought_sig
                 )
               end
