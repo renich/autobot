@@ -40,7 +40,6 @@ module Autobot
         dispatch_command(options)
       end
 
-      # ameba:disable Metrics/CyclomaticComplexity
       private def self.dispatch_command(options) : Nil
         case options[:command]
         when "help", "-h", "--help"
@@ -57,6 +56,13 @@ module Autobot
           Gateway.run(options[:config_path], options[:port], options[:verbose])
         when "cron"
           handle_cron_subcommand(options)
+        else
+          dispatch_secondary_command(options)
+        end
+      end
+
+      private def self.dispatch_secondary_command(options) : Nil
+        case options[:command]
         when "service"
           Service.run(options[:args])
         when "status"
