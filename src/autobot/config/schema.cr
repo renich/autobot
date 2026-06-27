@@ -13,6 +13,19 @@ module Autobot::Config
     end
   end
 
+  # A custom command entry that supports both simple string and rich format.
+  #
+  # Simple format (backward compatible):
+  #   summarize: "Summarize the conversation"
+  #
+  # Rich format (with description):
+  #   summarize:
+  #     prompt: "Summarize the conversation"      # use "prompt" for macros
+  #     description: "Summarize the conversation"
+  #
+  #   deploy:
+  #     path: "/home/user/scripts/deploy.sh"       # use "path" for scripts
+  #     description: "Deploy application to production"
   struct CustomCommandEntry
     getter value : String
     getter description : String?
@@ -291,6 +304,14 @@ module Autobot::Config
     end
   end
 
+  # Configuration for a single MCP server process.
+  #
+  #   garmin:
+  #     command: "uvx"
+  #     args: ["--python", "3.12", "garmin-mcp"]
+  #     env:
+  #       GARMIN_EMAIL: "${GARMIN_EMAIL}"
+  #     tools: ["get_activities*", "get_heart_rate*"]  # optional allowlist
   class McpServerConfig
     include YAML::Serializable
     property command : String = ""
@@ -302,6 +323,7 @@ module Autobot::Config
     end
   end
 
+  # Top-level MCP configuration containing named server definitions.
   class McpConfig
     include YAML::Serializable
     property servers : Hash(String, McpServerConfig) = {} of String => McpServerConfig
@@ -310,6 +332,7 @@ module Autobot::Config
     end
   end
 
+  # Configuration for a single plugin (e.g. sqlite, github, weather).
   class PluginConfig
     include YAML::Serializable
     property? enabled : Bool = true
@@ -318,6 +341,14 @@ module Autobot::Config
     end
   end
 
+  # Top-level plugins configuration. Builtin plugins are enabled by default.
+  # Users can opt out by setting `enabled: false`.
+  #
+  #   plugins:
+  #     sqlite:
+  #       enabled: true
+  #     github:
+  #       enabled: false
   class PluginsConfig
     include YAML::Serializable
     property sqlite : PluginConfig?
@@ -327,6 +358,7 @@ module Autobot::Config
     def initialize
     end
 
+    # Returns true if the named plugin is enabled (default: true).
     def enabled?(name : String) : Bool
       config = case name
                when "sqlite"  then sqlite
@@ -340,10 +372,6 @@ module Autobot::Config
 
   class Config
     include YAML::Serializable
-
-    @[YAML::Field(ignore: true)]
-    property config_path : Path? = nil
-
     property agents : AgentsConfig?
     property channels : ChannelsConfig?
     property providers : ProvidersConfig?
@@ -358,14 +386,7 @@ module Autobot::Config
 
     def workspace_path : Path
       workspace_str = agents.try(&.defaults.try(&.workspace)) || "./workspace"
-      if workspace_str.starts_with?("~")
-        return Path[workspace_str].expand(home: true)
-      end
-      path = Path[workspace_str]
-      if !path.absolute? && (cfg_path = config_path)
-        return (cfg_path.parent / path).expand
-      end
-      path.expand
+      Path[workspace_str].expand(home: true)
     end
 
     def default_model : String
@@ -396,6 +417,7 @@ module Autobot::Config
       {nil, nil}
     end
 
+    # Returns Bedrock config if the model uses the bedrock provider.
     def match_bedrock(model : String? = nil) : BedrockProviderConfig?
       resolved_model = agents.try(&.defaults.try(&.model)) || "anthropic/claude-sonnet-4-5"
       model_str = (model || resolved_model).downcase
@@ -406,6 +428,7 @@ module Autobot::Config
       bedrock
     end
 
+    # Look up a provider config by name (e.g. "openai", "gemini").
     def provider_by_name(name : String) : ProviderConfig?
       return nil unless p = providers
       normalized = name.downcase
@@ -418,6 +441,7 @@ module Autobot::Config
       nil
     end
 
+    # Check if a named plugin is enabled (defaults to true if unconfigured).
     def plugin_enabled?(name : String) : Bool
       plugins.try(&.enabled?(name)) != false
     end
@@ -431,7 +455,6 @@ module Autobot::Config
         {% end %}
         has_provider ||= (p.bedrock.try(&.configured?) || false)
       end
-
       unless has_provider
         raise "No LLM provider configured. Please set an API key in config.yml"
       end
