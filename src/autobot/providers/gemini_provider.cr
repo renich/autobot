@@ -20,11 +20,28 @@ module Autobot
       OAUTH_TOKEN_URL     = "https://oauth2.googleapis.com/token"
       TOKEN_EXPIRY_LEEWAY = 60 # seconds
 
-      # Client ID and Secret loaded from environment
-
       CONNECT_TIMEOUT = 30.seconds
       READ_TIMEOUT    = 300.seconds
       USER_AGENT      = "Autobot/#{VERSION}"
+
+      # Minimum system+tools payload size (chars) before an explicit cache is worthwhile
+      CACHE_MIN_CONTENT_SIZE = 8000
+      CACHE_TTL              = "3600s"
+
+      MAX_RETRIES      =   3
+      RETRY_BASE_DELAY = 2.0
+      RETRY_JITTER_MAX = 0.5
+
+      # Client identifiers the Code Assist API expects
+      CODE_ASSIST_USER_AGENT = "google-api-nodejs-client/9.15.1"
+      GOOG_API_CLIENT        = "gl-node/22.13.1"
+
+      HTTP_UNAUTHORIZED      = 401
+      HTTP_TOO_MANY_REQUESTS = 429
+      HTTP_SERVER_ERROR_MIN  = 500
+
+      # JSON-Schema keywords Gemini's functionDeclarations rejects
+      UNSUPPORTED_SCHEMA_KEYS = ["additionalProperties", "$schema", "$ref", "$defs", "definitions"]
 
       @client_id : String?
       @client_secret : String?
@@ -129,8 +146,8 @@ module Autobot
           token = get_access_token
           headers["Authorization"] = "Bearer #{token}"
           # Strict headers required by Code Assist API
-          headers["User-Agent"] = "google-api-nodejs-client/9.15.1"
-          headers["X-Goog-Api-Client"] = "gl-node/22.13.1"
+          headers["User-Agent"] = CODE_ASSIST_USER_AGENT
+          headers["X-Goog-Api-Client"] = GOOG_API_CLIENT
           headers["Client-Metadata"] = {
             "ideType"    => "ANTIGRAVITY",
             "platform"   => "PLATFORM_UNSPECIFIED",
@@ -183,14 +200,11 @@ module Autobot
         max_tokens : Int32 = DEFAULT_MAX_TOKENS,
         temperature : Float64 = DEFAULT_TEMPERATURE,
       ) : Response
-        max_retries = 3
-        base_delay = 2.0
-
         effective_model = (model || @model).sub(/^gemini\//, "")
         bare_model = effective_model.includes?("/") ? effective_model.split("/", 2).last : effective_model
         model_path = "models/#{bare_model}"
 
-        max_retries.times do |attempt|
+        MAX_RETRIES.times do |attempt|
           headers = build_headers
 
           begin
@@ -202,23 +216,25 @@ module Autobot
               if response.success?
                 return parse_native_response(response.body)
               end
-              handle_error_response(response, attempt, max_retries, base_delay)
+              handle_error_response(response, attempt)
             else
               # Use AI Studio native generateContent endpoint supporting caching
               response = do_generate_content_with_cache_check(model_path, messages, tools, max_tokens, temperature)
               return response
             end
           rescue ex
-            if attempt == max_retries - 1
-              raise ex
-            end
-            delay = base_delay * (2 ** attempt) + (rand * 0.5)
-            Log.warn { "Error during chat call: #{ex.message}, retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})" }
+            raise ex if attempt == MAX_RETRIES - 1
+            delay = backoff_delay(attempt)
+            Log.warn { "Error during chat call: #{ex.message}, retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{MAX_RETRIES})" }
             sleep delay.seconds
           end
         end
 
         raise "Max retries exceeded"
+      end
+
+      private def backoff_delay(attempt : Int32) : Float64
+        RETRY_BASE_DELAY * (2 ** attempt) + (rand * RETRY_JITTER_MAX)
       end
 
       private def do_generate_content_with_cache_check(
@@ -254,7 +270,7 @@ module Autobot
           end
         end
 
-        if cache_content_str.size > 8000
+        if cache_content_str.size > CACHE_MIN_CONTENT_SIZE
           @cached_name = create_cache(model_path, system_text, gemini_tools)
           if name = @cached_name
             @cached_hash = current_hash
@@ -271,7 +287,7 @@ module Autobot
 
         body = {
           "model" => JSON::Any.new(model_path),
-          "ttl"   => JSON::Any.new("3600s"),
+          "ttl"   => JSON::Any.new(CACHE_TTL),
         } of String => JSON::Any
 
         unless system_text.empty?
@@ -368,19 +384,19 @@ module Autobot
         end
       end
 
-      private def handle_error_response(response, attempt, max_retries, base_delay)
+      private def handle_error_response(response, attempt)
         status = response.status_code
 
-        # If we get a 401 Unauthorized, our token might have expired despite our check
-        if status == 401 && use_oauth?
+        # The token may have expired despite our pre-check; force a refresh on retry.
+        if status == HTTP_UNAUTHORIZED && use_oauth?
           Log.warn { "401 Unauthorized with OAuth token, forcing refresh..." }
           @token_expiry = nil
           return
         end
 
-        if (status == 429 || status >= 500) && attempt < max_retries - 1
-          delay = base_delay * (2 ** attempt) + (rand * 0.5)
-          Log.warn { "Rate limited or server error (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})" }
+        if (status == HTTP_TOO_MANY_REQUESTS || status >= HTTP_SERVER_ERROR_MIN) && attempt < MAX_RETRIES - 1
+          delay = backoff_delay(attempt)
+          Log.warn { "Rate limited or server error (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{MAX_RETRIES})" }
           sleep delay.seconds
           return
         end
@@ -405,24 +421,6 @@ module Autobot
           "user_prompt_id" => JSON::Any.new("autobot-#{Time.local.to_unix}"),
           "request"        => JSON::Any.new(inner.transform_values { |val| val }),
         }.to_json
-      end
-
-      private def build_native_payload(messages, tools, max_tokens, temperature) : String
-        contents = map_messages_to_native(messages)
-        system_instr = extract_system_instruction(messages)
-        native_tools = map_tools_to_native(tools)
-
-        payload = {
-          "contents"          => JSON::Any.new(contents.map { |content_msg| JSON::Any.new(content_msg) }),
-          "systemInstruction" => system_instr ? JSON::Any.new(system_instr) : nil,
-          "tools"             => native_tools ? JSON::Any.new(native_tools.map { |tool| JSON::Any.new(tool) }) : nil,
-          "generationConfig"  => JSON::Any.new({
-            "temperature"     => JSON::Any.new(temperature),
-            "maxOutputTokens" => JSON::Any.new(max_tokens.to_i64),
-          } of String => JSON::Any),
-        }.compact
-
-        payload.to_json
       end
 
       private def map_messages_to_native(messages) : Array(Hash(String, JSON::Any))
@@ -543,14 +541,33 @@ module Autobot
         decls = tools.compact_map do |tool|
           func = tool["function"]?
           next unless func
+          parameters = func["parameters"]? || JSON::Any.new({"type" => JSON::Any.new("object"), "properties" => JSON::Any.new({} of String => JSON::Any)})
           {
             "name"        => func["name"],
             "description" => func["description"]? || JSON::Any.new("No description available"),
-            "parameters"  => func["parameters"]? || JSON::Any.new({"type" => JSON::Any.new("object"), "properties" => JSON::Any.new({} of String => JSON::Any)}),
+            "parameters"  => sanitize_schema(parameters),
           } of String => JSON::Any
         end
 
         [{"functionDeclarations" => JSON::Any.new(decls.map { |decl| JSON::Any.new(decl) })}]
+      end
+
+      # Recursively drops JSON-Schema keywords Gemini's functionDeclarations rejects.
+      # MCP servers forward their raw inputSchema, which often includes keys like
+      # `additionalProperties` or `$schema` that trigger HTTP 400 INVALID_ARGUMENT.
+      private def sanitize_schema(node : JSON::Any) : JSON::Any
+        if hash = node.as_h?
+          cleaned = {} of String => JSON::Any
+          hash.each do |key, value|
+            next if UNSUPPORTED_SCHEMA_KEYS.includes?(key)
+            cleaned[key] = sanitize_schema(value)
+          end
+          JSON::Any.new(cleaned)
+        elsif array = node.as_a?
+          JSON::Any.new(array.map { |item| sanitize_schema(item) })
+        else
+          node
+        end
       end
 
       private def parse_native_response(body : String) : Response
@@ -624,15 +641,6 @@ module Autobot
           total_tokens: node["totalTokenCount"]?.try(&.as_i) || 0,
           cache_creation_tokens: 0,
           cache_read_tokens: node["cachedContentTokenCount"]?.try(&.as_i) || 0
-        )
-      end
-
-      private def parse_usage(node : JSON::Any?) : TokenUsage
-        return TokenUsage.new unless node
-        TokenUsage.new(
-          prompt_tokens: node["prompt_tokens"]?.try(&.as_i?) || 0,
-          completion_tokens: node["completion_tokens"]?.try(&.as_i?) || 0,
-          total_tokens: node["total_tokens"]?.try(&.as_i?) || 0
         )
       end
 
