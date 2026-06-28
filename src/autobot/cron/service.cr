@@ -16,6 +16,11 @@ module Autobot
       RELOAD_CHECK_INTERVAL = 60.seconds
       EXEC_TIMEOUT          = 30.seconds
 
+      # Cap stored exec output so it can be safely re-exported as PREV_OUTPUT on
+      # the next run without tripping E2BIG (argument list too long).
+      MAX_STORED_OUTPUT_BYTES  = 32_768
+      OUTPUT_TRUNCATION_NOTICE = "\n...[Output truncated due to size limit]"
+
       @store_path : Path
       @on_job : JobCallback?
       @on_exec : ExecCallback?
@@ -400,13 +405,7 @@ module Autobot
       end
 
       private def run_exec_job(job : CronJob, start_ms : Int64) : Nil
-        output = exec_command(job)
-
-        # Limit stored output to prevent E2BIG errors in environment variables on next runs
-        max_bytes = 32768
-        if output.bytesize > max_bytes
-          output = output.byte_slice(0, max_bytes) + "\n...[Output truncated due to size limit]"
-        end
+        output = truncate_output(exec_command(job))
 
         job.state = job.state.copy(
           last_run_at_ms: start_ms,
@@ -417,10 +416,19 @@ module Autobot
         if !output.empty? && (callback = @on_exec)
           callback.call(job, output)
         end
-        Log.debug { "Cron: exec job '#{job.name}' completed (output: #{output.size} bytes)" }
+        Log.debug { "Cron: exec job '#{job.name}' completed (output: #{output.bytesize} bytes)" }
       rescue ex
         job.state = job.state.copy(last_run_at_ms: start_ms, last_status: JobStatus::Error, last_error: ex.message)
         Log.error { "Cron: exec job '#{job.name}' failed: #{ex.message}" }
+      end
+
+      # Bound stored output to MAX_STORED_OUTPUT_BYTES. byte_slice can cut a
+      # multi-byte character in half, so scrub drops the dangling bytes to keep
+      # the result valid UTF-8 for JSON persistence and the PREV_OUTPUT export.
+      private def truncate_output(output : String) : String
+        return output if output.bytesize <= MAX_STORED_OUTPUT_BYTES
+
+        output.byte_slice(0, MAX_STORED_OUTPUT_BYTES).scrub("") + OUTPUT_TRUNCATION_NOTICE
       end
 
       private def exec_command(job : CronJob) : String

@@ -1042,7 +1042,34 @@ describe Autobot::Cron::Service do
       last_output = jobs.first.state.last_output
       last_output.should_not be_nil
       if output = last_output
-        output.bytesize.should be <= 33000
+        max = Autobot::Cron::Service::MAX_STORED_OUTPUT_BYTES +
+              Autobot::Cron::Service::OUTPUT_TRUNCATION_NOTICE.bytesize
+        output.bytesize.should be <= max
+        output.should contain("Output truncated due to size limit")
+      end
+    ensure
+      FileUtils.rm_rf(tmp) if tmp
+    end
+
+    it "keeps truncated output valid utf-8 when the cut splits a character" do
+      tmp = TestHelper.tmp_dir
+      service = Autobot::Cron::Service.new(store_path: tmp / "cron.json", sandbox_config: "none")
+
+      # '€' is 3 bytes; the 32768-byte cut lands mid-character, so a naive
+      # byte_slice would leave invalid UTF-8 that breaks JSON persistence.
+      job = service.add_job(
+        name: "exec_multibyte",
+        schedule: Autobot::Cron::CronSchedule.new(kind: Autobot::Cron::ScheduleKind::Every, every_ms: 60000_i64),
+        kind: Autobot::Cron::PayloadKind::Exec,
+        command: "yes '€' | head -n 20000 | tr -d '\\n'"
+      )
+
+      service.run_job(job.id, force: true)
+
+      last_output = service.list_jobs.first.state.last_output
+      last_output.should_not be_nil
+      if output = last_output
+        output.valid_encoding?.should be_true
         output.should contain("Output truncated due to size limit")
       end
     ensure
