@@ -73,7 +73,7 @@ module Autobot
       end
 
       def exec_program(program : String, args : Array(String), timeout : Int32 = 60) : ToolResult
-        if workspace = @workspace
+        if @sandboxed && (workspace = @workspace)
           exec_program_via_sandbox_exec(program, args, timeout, workspace)
         else
           exec_program_direct(program, args, timeout)
