@@ -51,6 +51,7 @@ module Autobot
         session.add_message("user", message)
 
         print "Thinking..."
+        STDOUT.flush
 
         response = process_message(config, bus, tool_registry, session, message)
 
@@ -86,6 +87,7 @@ module Autobot
 
         loop do
           print "\e[1;34mYou:\e[0m "
+          STDOUT.flush
           input = gets
           break unless input
 
@@ -101,6 +103,7 @@ module Autobot
 
           session.add_message("user", command)
           print "Thinking..."
+          STDOUT.flush
 
           response = process_message(config, bus, tool_registry, session, command)
 
