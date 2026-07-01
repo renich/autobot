@@ -38,7 +38,7 @@ module Autobot::Providers
       @model : String = "anthropic.claude-3-5-sonnet-20241022-v2:0",
       @session_token : String? = nil,
       @guardrail_id : String? = nil,
-      @guardrail_version : String? = nil,
+      @guardrail_version : String? = nil
     )
       # Provider base class requires api_key; pass access_key_id for compatibility
       super(@access_key_id)
@@ -57,7 +57,7 @@ module Autobot::Providers
       tools : Array(Hash(String, JSON::Any))? = nil,
       model : String? = nil,
       max_tokens : Int32 = DEFAULT_MAX_TOKENS,
-      temperature : Float64 = DEFAULT_TEMPERATURE,
+      temperature : Float64 = DEFAULT_TEMPERATURE
     ) : Response
       effective_model = strip_prefix(model || @model)
       body = build_request_body(messages, tools, max_tokens, temperature)
@@ -76,7 +76,7 @@ module Autobot::Providers
       messages : Array(Hash(String, JSON::Any)),
       tools : Array(Hash(String, JSON::Any))?,
       max_tokens : Int32,
-      temperature : Float64,
+      temperature : Float64
     ) : Hash(String, JSON::Any)
       body = {} of String => JSON::Any
 

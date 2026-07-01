@@ -107,7 +107,7 @@ module Autobot
         last_run_at_ms : Int64? | Nil = @last_run_at_ms,
         last_status : JobStatus? | Nil = @last_status,
         last_error : String? | Nil = @last_error,
-        last_output : String? | Nil = @last_output,
+        last_output : String? | Nil = @last_output
       ) : CronJobState
         CronJobState.new(
           last_run_at_ms: last_run_at_ms,
@@ -143,7 +143,7 @@ module Autobot
         @created_at_ms = 0_i64,
         @updated_at_ms = 0_i64,
         @delete_after_run = false,
-        @owner : String? = nil,
+        @owner : String? = nil
       )
       end
     end

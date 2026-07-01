@@ -47,7 +47,7 @@ module Autobot::Tools
     #   has already called and understands.
     def definitions(
       exclude : Array(String)? = nil,
-      compact : Array(String)? = nil,
+      compact : Array(String)? = nil
     ) : Array(Hash(String, JSON::Any))
       tools = @tools.values
       tools = tools.reject { |tool| exclude.try(&.includes?(tool.name)) } if exclude

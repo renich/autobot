@@ -33,7 +33,7 @@ module Autobot
         @server_name : String,
         @command : String,
         @args : Array(String) = [] of String,
-        @env : Hash(String, String) = {} of String => String,
+        @env : Hash(String, String) = {} of String => String
       )
         @mutex = Mutex.new
         @request_id = 0_i64

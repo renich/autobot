@@ -27,7 +27,7 @@ module Autobot
         @name : String,
         @description : String,
         @parameters : Tools::ToolSchema,
-        @raw_input_schema : JSON::Any? = nil,
+        @raw_input_schema : JSON::Any? = nil
       )
       end
 

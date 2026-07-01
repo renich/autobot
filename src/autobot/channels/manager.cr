@@ -28,7 +28,7 @@ module Autobot::Channels
       @config : Config::Config,
       @bus : Bus::MessageBus,
       @session_manager : Session::Manager? = nil,
-      @cron_service : Cron::Service? = nil,
+      @cron_service : Cron::Service? = nil
     )
       @transcriber = detect_transcriber
       init_channels

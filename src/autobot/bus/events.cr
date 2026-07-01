@@ -20,7 +20,7 @@ module Autobot::Bus
       @content : String,
       @timestamp : Time = Time.utc,
       @media : Array(MediaAttachment)? = nil,
-      @metadata : Hash(String, String) = {} of String => String,
+      @metadata : Hash(String, String) = {} of String => String
     )
     end
 
@@ -49,7 +49,7 @@ module Autobot::Bus
       @file_path : String? = nil,
       @mime_type : String? = nil,
       @size_bytes : Int64? = nil,
-      @data : String? = nil,
+      @data : String? = nil
     )
     end
   end
@@ -71,7 +71,7 @@ module Autobot::Bus
       @content : String,
       @reply_to : String? = nil,
       @media : Array(MediaAttachment)? = nil,
-      @metadata : Hash(String, String) = {} of String => String,
+      @metadata : Hash(String, String) = {} of String => String
     )
     end
   end
