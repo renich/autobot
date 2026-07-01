@@ -25,7 +25,7 @@ module Autobot::Channels
     def initialize(
       @bus : Bus::MessageBus,
       @bridge_url : String = "ws://localhost:3001",
-      @allow_from : Array(String) = [] of String,
+      @allow_from : Array(String) = [] of String
     )
       super(Constants::CHANNEL_WHATSAPP, @bus, @allow_from)
     end

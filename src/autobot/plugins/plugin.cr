@@ -91,7 +91,7 @@ module Autobot
         @config : Config::Config,
         @tool_registry : Tools::Registry,
         @workspace : Path,
-        @sandbox_executor : Tools::SandboxExecutor,
+        @sandbox_executor : Tools::SandboxExecutor
       )
       end
     end

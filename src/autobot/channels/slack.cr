@@ -32,7 +32,7 @@ module Autobot::Channels
       allow_from : Array(String) = [] of String,
       @group_policy : String = "mention",
       @group_allow_from : Array(String) = [] of String,
-      @dm_config : Config::SlackDMConfig = Config::SlackDMConfig.new,
+      @dm_config : Config::SlackDMConfig = Config::SlackDMConfig.new
     )
       super(Constants::CHANNEL_SLACK, @bus, allow_from)
     end

@@ -145,7 +145,7 @@ module Autobot
       # Generates channel-specific configuration
       private def self.generate_channel_config(
         channel : String,
-        config : InteractiveSetup::Configuration,
+        config : InteractiveSetup::Configuration
       ) : Array(String)
         lines = [] of String
 

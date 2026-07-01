@@ -53,7 +53,7 @@ module Autobot
           @aws_region = nil,
           @zulip_site = nil,
           @zulip_email = nil,
-          @zulip_api_key = nil,
+          @zulip_api_key = nil
         )
         end
       end
@@ -209,7 +209,12 @@ module Autobot
         if selected.empty?
           output.puts "✓ CLI only\n"
         else
-          output.puts "✓ #{selected.map { |channel_key| CHANNELS[channel_key] }.join(", ")}\n"
+          # ⚡ Bolt Optimization: Write selected channels directly to output IO
+          # This replaces `Array#map.join` with `Enumerable#join(io)` to eliminate
+          # intermediate string/array allocations for a more memory-efficient setup output.
+          output.print "✓ "
+          selected.join(output, ", ") { |channel_key, io| io << CHANNELS[channel_key] }
+          output.puts "\n"
         end
 
         selected
