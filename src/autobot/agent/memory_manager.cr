@@ -26,7 +26,7 @@ module Autobot::Agent
       @provider : Providers::Provider,
       @model : String,
       @memory_window : Int32,
-      @sessions : Session::Manager,
+      @sessions : Session::Manager
     )
       @memory = MemoryStore.new(@workspace)
     end
