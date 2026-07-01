@@ -45,7 +45,7 @@ module Autobot
         @messages : Array(Message) = [] of Message,
         @created_at : Time = Time.utc,
         @updated_at : Time = Time.utc,
-        @metadata : Hash(String, JSON::Any) = {} of String => JSON::Any,
+        @metadata : Hash(String, JSON::Any) = {} of String => JSON::Any
       )
       end
 

@@ -54,7 +54,7 @@ module Autobot
 
       def initialize(
         @properties = {} of String => PropertySchema,
-        @required = [] of String,
+        @required = [] of String
       )
       end
 
@@ -111,7 +111,7 @@ module Autobot
         @min_length = nil,
         @max_length = nil,
         @default_value = nil,
-        @items = nil,
+        @items = nil
       )
       end
 

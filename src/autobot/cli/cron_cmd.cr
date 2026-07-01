@@ -65,7 +65,7 @@ module Autobot
         at : String?,
         deliver : Bool,
         to : String?,
-        channel : String?,
+        channel : String?
       ) : Nil
         result = Cron::ScheduleBuilder.build(
           every_seconds: every.try(&.to_i64),
@@ -110,7 +110,7 @@ module Autobot
         message : String?,
         every : Int32?,
         cron_expr : String?,
-        at : String?,
+        at : String?
       ) : Nil
         result = Cron::ScheduleBuilder.build(
           every_seconds: every.try(&.to_i64),

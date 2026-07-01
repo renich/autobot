@@ -26,7 +26,7 @@ module Autobot::Channels
       @site : String,
       @email : String,
       @api_key : String,
-      allow_from : Array(String) = [] of String,
+      allow_from : Array(String) = [] of String
     )
       super(Constants::CHANNEL_ZULIP, bus, allow_from)
       @site = @site.rstrip('/')
