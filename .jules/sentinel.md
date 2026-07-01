@@ -1,0 +1,4 @@
+## 2024-05-24 - Pipe Deadlock and DoS in Process Execution
+**Vulnerability:** When executing child processes using `Process.new`, `stdout` and `stderr` were read sequentially and pipe reads aborted early without draining, and `process.wait` was unbound. This can lead to process deadlocks if a buffer fills up (blocking the child process indefinitely) and allows malicious scripts to cause resource exhaustion or hangs (DoS).
+**Learning:** In Crystal (and UNIX in general), reading standard streams sequentially without size caps and properly draining pipes can cause the OS pipe buffer to fill up. A process blocked on write to a pipe won't exit, and `process.wait` without a timeout will hang the parent indefinitely.
+**Prevention:** Always read `stdout` and `stderr` concurrently using `spawn` and `Channel`, read bounded amounts of data, drain the rest of the stream, and wrap `process.wait` in a `select` with a timeout.

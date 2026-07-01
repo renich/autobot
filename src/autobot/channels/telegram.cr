@@ -309,7 +309,7 @@ module Autobot::Channels
       @custom_commands : Config::CustomCommandsConfig = Config::CustomCommandsConfig.new,
       @session_manager : Session::Manager? = nil,
       @transcriber : Transcriber? = nil,
-      @cron_service : Cron::Service? = nil,
+      @cron_service : Cron::Service? = nil
     )
       super(Constants::CHANNEL_TELEGRAM, @bus, @allow_from)
     end
@@ -428,7 +428,7 @@ module Autobot::Channels
       api_method : String,
       field_name : String,
       filename : String,
-      content_type : String,
+      content_type : String
     ) : Nil
       body = build_media_multipart(chat_id, file_bytes, caption,
         field_name: field_name, filename: filename, content_type: content_type)
@@ -452,7 +452,7 @@ module Autobot::Channels
       caption : String,
       field_name : String,
       filename : String,
-      content_type : String,
+      content_type : String
     ) : String
       io = IO::Memory.new
 
@@ -867,15 +867,30 @@ module Autobot::Channels
         error: Process::Redirect::Pipe,
       )
 
-      # Read with size limit to prevent DoS (truncate at 4000 chars)
-      output = read_limited_io(process.output, 4000)
-      error_output = read_limited_io(process.error, 4000)
-      status = process.wait
+      # Read with size limit concurrently to prevent DoS and pipe deadlocks
+      stdout_channel = Channel(String).new(1)
+      stderr_channel = Channel(String).new(1)
 
-      result = if status.success?
+      spawn { stdout_channel.send(read_limited_io(process.output, 4000)) }
+      spawn { stderr_channel.send(read_limited_io(process.error, 4000)) }
+
+      completed = Channel(Process::Status).new(1)
+      spawn do
+        completed.send(process.wait)
+      end
+
+      timed_out, status = wait_for_process(process, completed)
+
+      output = stdout_channel.receive
+      error_output = stderr_channel.receive
+
+      result = if timed_out
+                 "Script failed: Timeout exceeded"
+               elsif status && status.success?
                  output.empty? ? "Script completed successfully." : output
                else
-                 "Script failed (exit #{status.exit_code}):\n#{error_output}".strip
+                 exit_code = status ? status.exit_code : "unknown"
+                 "Script failed (exit #{exit_code}):\n#{error_output}".strip
                end
 
       stop_typing(chat_id)
@@ -883,6 +898,23 @@ module Autobot::Channels
     rescue ex
       stop_typing(chat_id)
       send_reply(chat_id, "Error running script")
+    end
+
+    private def wait_for_process(process : Process, completed : Channel(Process::Status)) : {Bool, Process::Status?}
+      select
+      when status = completed.receive
+        {false, status}
+      when timeout(30.seconds)
+        begin
+          process.signal(Signal::TERM)
+          sleep 1.second
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        rescue
+          # Process already terminated
+        end
+        {true, nil}
+      end
     end
 
     private def validate_script_path(script_path : String) : String?
@@ -1063,20 +1095,24 @@ module Autobot::Channels
       buffer = IO::Memory.new
       bytes_read = 0
       chunk = Bytes.new(4096)
+      truncated = false
 
       while (n = io.read(chunk)) > 0
         bytes_read += n
-        if bytes_read > max_size
-          buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
-          buffer << "\n... (truncated)"
-          break
+        if !truncated
+          if bytes_read > max_size
+            buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
+            buffer << "\n... (truncated)"
+            truncated = true
+          else
+            buffer.write(chunk[0, n])
+          end
         end
-        buffer.write(chunk[0, n])
       end
 
       buffer.to_s
     rescue
-      ""
+      buffer.to_s
     end
 
     private def send_reply(chat_id : String, text : String) : Nil
