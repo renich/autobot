@@ -53,7 +53,7 @@ module Autobot
           @aws_region = nil,
           @zulip_site = nil,
           @zulip_email = nil,
-          @zulip_api_key = nil,
+          @zulip_api_key = nil
         )
         end
       end
@@ -209,7 +209,14 @@ module Autobot
         if selected.empty?
           output.puts "✓ CLI only\n"
         else
-          output.puts "✓ #{selected.map { |channel_key| CHANNELS[channel_key] }.join(", ")}\n"
+          # Performance optimization: use String.build and IO yielding to avoid intermediate array allocations
+          output.puts String.build { |io|
+            io << "✓ "
+            selected.join(io, ", ") do |channel_key, join_io|
+              join_io << CHANNELS[channel_key]
+            end
+            io << "\n"
+          }
         end
 
         selected
