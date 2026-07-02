@@ -29,7 +29,7 @@ module Autobot
       brave_api_key : String? = nil,
       web_fetch_max_chars : Int32 = WebFetchTool::DEFAULT_MAX_CHARS,
       skills_dirs : Array(String) = [] of String,
-      rate_limiter : RateLimiter? = nil,
+      rate_limiter : RateLimiter? = nil
     ) : Registry
       registry = Registry.new(rate_limiter: rate_limiter)
 
@@ -71,7 +71,7 @@ module Autobot
       exec_allow_patterns : Array(Regex) = [] of Regex,
       sandbox_config : String = "auto",
       brave_api_key : String? = nil,
-      rate_limiter : RateLimiter? = nil,
+      rate_limiter : RateLimiter? = nil
     ) : Registry
       registry = Registry.new(rate_limiter: rate_limiter)
 
@@ -105,7 +105,7 @@ module Autobot
 
     private def self.register_filesystem_tools(
       registry : Registry,
-      executor : SandboxExecutor,
+      executor : SandboxExecutor
     )
       registry.register(ReadFileTool.new(executor))
       registry.register(WriteFileTool.new(executor))
@@ -120,7 +120,7 @@ module Autobot
       deny_patterns : Array(Regex),
       allow_patterns : Array(Regex),
       sandbox_config : String,
-      workspace : Path?,
+      workspace : Path?
     )
       registry.register(ExecTool.new(
         executor: executor,
@@ -136,7 +136,7 @@ module Autobot
       registry : Registry,
       executor : SandboxExecutor,
       brave_api_key : String?,
-      web_fetch_max_chars : Int32,
+      web_fetch_max_chars : Int32
     )
       has_search_key = brave_api_key && !brave_api_key.empty?
       if has_search_key
@@ -153,7 +153,7 @@ module Autobot
     private def self.register_bash_tools(
       registry : Registry,
       executor : SandboxExecutor,
-      skills_dirs : Array(String),
+      skills_dirs : Array(String)
     )
       BashToolDiscovery.discover(executor, skills_dirs).each do |tool|
         registry.register(tool)

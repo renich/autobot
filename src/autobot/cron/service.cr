@@ -36,7 +36,7 @@ module Autobot
         @on_job : JobCallback? = nil,
         @on_exec : ExecCallback? = nil,
         @workspace : Path? = nil,
-        @sandbox_config : String = "none",
+        @sandbox_config : String = "none"
       )
       end
 
@@ -88,7 +88,7 @@ module Autobot
         delete_after_run : Bool = false,
         owner : String? = nil,
         kind : PayloadKind = PayloadKind::AgentTurn,
-        command : String? = nil,
+        command : String? = nil
       ) : CronJob
         now = now_ms
 
@@ -159,7 +159,7 @@ module Autobot
         job_id : String,
         owner : String? = nil,
         schedule : CronSchedule? = nil,
-        message : String? = nil,
+        message : String? = nil
       ) : CronJob?
         store.jobs.each do |job|
           if job.id == job_id

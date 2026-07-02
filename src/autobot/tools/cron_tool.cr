@@ -142,7 +142,7 @@ module Autobot
         command : String,
         schedule : Cron::CronSchedule,
         delete_after : Bool,
-        owner : String,
+        owner : String
       ) : ToolResult
         job_name = derive_exec_name(params, command)
 
@@ -166,7 +166,7 @@ module Autobot
         message : String,
         schedule : Cron::CronSchedule,
         delete_after : Bool,
-        owner : String,
+        owner : String
       ) : ToolResult
         job_name = derive_job_name(params, message)
 
