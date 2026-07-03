@@ -20,7 +20,7 @@ class WhatsAppChannelTest < Autobot::Channels::WhatsAppChannel
 end
 
 private def build_whatsapp_channel(
-  allow_from : Array(String) = ["*"],
+  allow_from : Array(String) = ["*"]
 ) : WhatsAppChannelTest
   bus = Autobot::Bus::MessageBus.new
   WhatsAppChannelTest.new(
