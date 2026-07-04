@@ -12,7 +12,7 @@ module Autobot
         message : String?,
         session_id : String,
         markdown : Bool,
-        show_logs : Bool,
+        show_logs : Bool
       ) : Nil
         config = Config::Loader.load(config_path)
 
@@ -45,17 +45,19 @@ module Autobot
         session_manager : Session::Manager,
         session_id : String,
         message : String,
-        markdown : Bool,
+        markdown : Bool
       ) : Nil
         session = session_manager.get_or_create(session_id)
         session.add_message("user", message)
 
         print "Thinking..."
+        STDOUT.flush
 
         response = process_message(config, bus, tool_registry, session, message)
 
         # Clear "Thinking..." line
         print "\r\e[K"
+        STDOUT.flush
 
         session.add_message("assistant", response)
         session_manager.save(session)
@@ -69,7 +71,7 @@ module Autobot
         tool_registry : Tools::Registry,
         session_manager : Session::Manager,
         session_id : String,
-        markdown : Bool,
+        markdown : Bool
       ) : Nil
         puts LOGO.strip
         puts "Interactive mode (type 'exit' or Ctrl+C to quit)\n"
@@ -86,6 +88,7 @@ module Autobot
 
         loop do
           print "\e[1;34mYou:\e[0m "
+          STDOUT.flush
           input = gets
           break unless input
 
@@ -101,10 +104,12 @@ module Autobot
 
           session.add_message("user", command)
           print "Thinking..."
+          STDOUT.flush
 
           response = process_message(config, bus, tool_registry, session, command)
 
           print "\r\e[K"
+          STDOUT.flush
 
           session.add_message("assistant", response)
           session_manager.save(session)
@@ -121,7 +126,7 @@ module Autobot
         bus : Bus::MessageBus,
         tool_registry : Tools::Registry,
         session : Session::Session,
-        message : String,
+        message : String
       ) : String
         model = config.default_model
         agent_defaults = Config::AgentDefaults.new
