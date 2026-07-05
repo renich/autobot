@@ -12,7 +12,7 @@ class ZulipChannelTest < Autobot::Channels::ZulipChannel
 end
 
 private def build_channel(
-  allow_from : Array(String) = [] of String,
+  allow_from : Array(String) = [] of String
 ) : ZulipChannelTest
   bus = Autobot::Bus::MessageBus.new
   ZulipChannelTest.new(

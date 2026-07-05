@@ -36,7 +36,7 @@ module Autobot
         @provider_name : String,
         @model : String? = nil,
         @size : String = "1024x1024",
-        @api_base : String? = nil,
+        @api_base : String? = nil
       )
       end
 

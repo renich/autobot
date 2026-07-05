@@ -46,7 +46,7 @@ module Autobot
       def initialize(
         @per_tool_limits = {} of String => Limit,
         @global_limit : Limit? = nil,
-        @session_limit : Limit = DEFAULT_SESSION_LIMIT,
+        @session_limit : Limit = DEFAULT_SESSION_LIMIT
       )
         @trackers = {} of String => CallTracker
         @mutex = Mutex.new

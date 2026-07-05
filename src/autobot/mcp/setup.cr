@@ -26,7 +26,7 @@ module Autobot
     def self.setup(
       config : Config::Config,
       tool_registry : Tools::Registry,
-      client_factory : ClientFactory? = nil,
+      client_factory : ClientFactory? = nil
     ) : Array(Client)
       clients = [] of Client
 
@@ -51,7 +51,7 @@ module Autobot
       servers : Hash(String, Config::McpServerConfig),
       clients : Array(Client),
       tool_registry : Tools::Registry,
-      client_factory : ClientFactory? = nil,
+      client_factory : ClientFactory? = nil
     ) : Nil
       channel = Channel({Client, Config::McpServerConfig} | Nil).new
 
@@ -88,7 +88,7 @@ module Autobot
     private def self.start_server(
       name : String,
       config : Config::McpServerConfig,
-      client_factory : ClientFactory? = nil,
+      client_factory : ClientFactory? = nil
     ) : Client?
       if factory = client_factory
         return factory.call(name, config)

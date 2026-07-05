@@ -65,7 +65,7 @@ module Autobot::Agent
       exec_deny_patterns : Array(Regex) = Tools::ExecTool::DEFAULT_DENY_PATTERNS,
       exec_allow_patterns : Array(Regex) = [] of Regex,
       sandbox_config : String = "auto",
-      rate_limiter : Tools::RateLimiter? = nil,
+      rate_limiter : Tools::RateLimiter? = nil
     )
       @model = model || @provider.default_model
       sandboxed = sandbox_config.downcase != "none"
@@ -131,7 +131,7 @@ module Autobot::Agent
       content : String,
       session_key : String = Constants::DEFAULT_SESSION_KEY,
       channel : String = Constants::CHANNEL_CLI,
-      chat_id : String = Constants::DEFAULT_CHAT_ID,
+      chat_id : String = Constants::DEFAULT_CHAT_ID
     ) : String
       msg = Bus::InboundMessage.new(
         channel: channel,
@@ -292,7 +292,7 @@ module Autobot::Agent
       exec_deny_patterns : Array(Regex),
       exec_allow_patterns : Array(Regex),
       sandbox_config : String,
-      rate_limiter : Tools::RateLimiter?,
+      rate_limiter : Tools::RateLimiter?
     ) : Nil
       subagents = SubagentManager.new(
         provider: @provider,
