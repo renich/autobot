@@ -26,7 +26,7 @@ module Autobot::Agent
       @provider : Providers::Provider,
       @model : String,
       @memory_window : Int32,
-      @sessions : Session::Manager,
+      @sessions : Session::Manager
     )
       @memory = MemoryStore.new(@workspace)
     end
@@ -90,16 +90,17 @@ module Autobot::Agent
     end
 
     private def format_messages(messages : Array(Session::Message)) : String
-      lines = messages.compact_map do |message|
-        next nil if message.content.empty?
-        tools_str = if used_tools = message.tools_used
-                      " [tools: #{used_tools.join(", ")}]"
-                    else
-                      ""
-                    end
-        "[#{message.timestamp[0, 16]}] #{message.role.upcase}#{tools_str}: #{message.content}"
+      String.build do |io|
+        messages.each.reject(&.content.empty?).join(io, '\n') do |message, string_io|
+          string_io << '[' << message.timestamp[0, 16] << "] " << message.role.upcase
+          if used_tools = message.tools_used
+            string_io << " [tools: "
+            used_tools.join(string_io, ", ")
+            string_io << ']'
+          end
+          string_io << ": " << message.content
+        end
       end
-      lines.join("\n")
     end
 
     private def build_prompt(current_memory : String, conversation : String) : String
