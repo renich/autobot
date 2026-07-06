@@ -25,7 +25,7 @@ end
 private def create_test_loop(
   workspace : Path,
   cron_service : Autobot::Cron::Service? = nil,
-  tools : Autobot::Tools::Registry? = nil,
+  tools : Autobot::Tools::Registry? = nil
 ) : TestableLoop
   bus = Autobot::Bus::MessageBus.new(capacity: 10)
   provider = MockProvider.new

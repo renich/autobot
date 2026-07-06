@@ -25,7 +25,7 @@ module Autobot
         @tool = nil,
         @requires_bins = [] of String,
         @requires_env = [] of String,
-        @raw = {} of String => String,
+        @raw = {} of String => String
       )
       end
     end

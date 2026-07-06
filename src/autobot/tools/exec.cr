@@ -84,7 +84,7 @@ module Autobot
         @working_dir : String? = nil,
         @deny_patterns = DEFAULT_DENY_PATTERNS,
         @allow_patterns = [] of Regex,
-        sandbox_config : String = "auto",
+        sandbox_config : String = "auto"
       )
         @sandbox_type = resolve_sandbox_type(sandbox_config)
         ensure_sandbox_available!
