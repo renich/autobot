@@ -53,7 +53,7 @@ module Autobot
         @exec_deny_patterns : Array(Regex) = Tools::ExecTool::DEFAULT_DENY_PATTERNS,
         @exec_allow_patterns : Array(Regex) = [] of Regex,
         @sandbox_config : String = "auto",
-        @rate_limiter : Tools::RateLimiter? = nil,
+        @rate_limiter : Tools::RateLimiter? = nil
       )
         @context = Context::Builder.new(@workspace)
       end
@@ -63,7 +63,7 @@ module Autobot
         task : String,
         label : String? = nil,
         origin_channel : String = Constants::CHANNEL_CLI,
-        origin_chat_id : String = Constants::DEFAULT_CHAT_ID,
+        origin_chat_id : String = Constants::DEFAULT_CHAT_ID
       ) : String
         task_id = UUID.random.to_s[0, TASK_ID_LENGTH]
         display_label = label || truncate_label(task)
@@ -90,7 +90,7 @@ module Autobot
         task_id : String,
         task : String,
         label : String,
-        origin : Hash(String, String),
+        origin : Hash(String, String)
       ) : Nil
         Log.info { "Subagent [#{task_id}] starting task: #{label}" }
 
@@ -139,7 +139,7 @@ module Autobot
         task : String,
         result : String,
         origin : Hash(String, String),
-        status : Status,
+        status : Status
       ) : Nil
         status_text = status.ok? ? "completed successfully" : "failed"
 

@@ -309,7 +309,7 @@ module Autobot::Channels
       @custom_commands : Config::CustomCommandsConfig = Config::CustomCommandsConfig.new,
       @session_manager : Session::Manager? = nil,
       @transcriber : Transcriber? = nil,
-      @cron_service : Cron::Service? = nil,
+      @cron_service : Cron::Service? = nil
     )
       super(Constants::CHANNEL_TELEGRAM, @bus, @allow_from)
     end
@@ -428,7 +428,7 @@ module Autobot::Channels
       api_method : String,
       field_name : String,
       filename : String,
-      content_type : String,
+      content_type : String
     ) : Nil
       body = build_media_multipart(chat_id, file_bytes, caption,
         field_name: field_name, filename: filename, content_type: content_type)
@@ -452,7 +452,7 @@ module Autobot::Channels
       caption : String,
       field_name : String,
       filename : String,
-      content_type : String,
+      content_type : String
     ) : String
       io = IO::Memory.new
 

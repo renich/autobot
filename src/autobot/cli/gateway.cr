@@ -32,7 +32,7 @@ module Autobot
         agent_loop = create_agent_loop(config, bus, provider, tool_registry, session_manager, cron_service, rate_limiter)
 
         # Handle shutdown signals
-        shutdown = -> do
+        shutdown = ->do
           puts "\nShutting down..."
           agent_loop.stop
           cron_service.stop
@@ -139,7 +139,7 @@ module Autobot
         tool_registry : Tools::Registry,
         session_manager : Session::Manager,
         cron_service : Cron::Service,
-        rate_limiter : Tools::RateLimiter? = nil,
+        rate_limiter : Tools::RateLimiter? = nil
       )
         sandbox_config = config.tools.try(&.sandbox) || "auto"
         deny_patterns, allow_patterns = SetupHelper.load_exec_patterns(config)
