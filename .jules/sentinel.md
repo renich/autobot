@@ -1,0 +1,4 @@
+## 2024-07-07 - SQLite Command Injection Vulnerability
+**Vulnerability:** The SQLite plugin used `sqlite3` CLI to execute user queries directly without sandboxing dot-commands (`.shell`, `.system`). This allowed an attacker to completely bypass SQL constraints and execute arbitrary shell commands on the host system.
+**Learning:** In a codebase that wraps external CLI tools for data access (like `sqlite3`), standard SQL injection protections (parameterization, shell escaping) are insufficient if the CLI tool itself interprets commands differently than standard SQL. The `sqlite3` CLI provides interactive features that are dangerous when exposed to untrusted inputs.
+**Prevention:** Always use the built-in safe mode flags (e.g., `-safe` for `sqlite3`) when wrapping interactive CLI tools to restrict functionality to expected operations and prevent command injection via tool-specific features.
