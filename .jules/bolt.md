@@ -1,0 +1,1 @@
+## 2024-05-24 - Array#map to String.build\n**Learning:** Crystal's Array#map chained with join creates intermediate array and string allocations that can be avoided.\n**Action:** Use String.build and Enumerable#join(io) pattern to write directly to IO.
