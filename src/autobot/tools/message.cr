@@ -41,7 +41,7 @@ module Autobot
         @executor : SandboxExecutor? = nil,
         @send_callback : SendCallback? = nil,
         @default_channel : String = "",
-        @default_chat_id : String = "",
+        @default_chat_id : String = ""
       )
       end
 

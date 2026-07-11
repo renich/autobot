@@ -61,7 +61,7 @@ module Autobot
         client_id : String? = nil,
         client_secret : String? = nil,
         refresh_token : String? = nil,
-        api_base : String? = nil,
+        api_base : String? = nil
       )
         super(api_key, api_base)
         @client_id = client_id.presence || ENV["GOOGLE_CLIENT_ID"]? || ENV["GEMINI_CLIENT_ID"]?
@@ -197,7 +197,7 @@ module Autobot
         tools : Array(Hash(String, JSON::Any))? = nil,
         model : String? = nil,
         max_tokens : Int32 = DEFAULT_MAX_TOKENS,
-        temperature : Float64 = DEFAULT_TEMPERATURE,
+        temperature : Float64 = DEFAULT_TEMPERATURE
       ) : Response
         effective_model = (model || @model).sub(/^gemini\//, "")
         bare_model = effective_model.includes?("/") ? effective_model.split("/", 2).last : effective_model
@@ -241,7 +241,7 @@ module Autobot
         messages : Array(Hash(String, JSON::Any)),
         tools : Array(Hash(String, JSON::Any))?,
         max_tokens : Int32,
-        temperature : Float64,
+        temperature : Float64
       ) : Response
         system_text = extract_system_prompt_text(messages)
         contents = map_messages_to_native(reject_system_messages(messages))
@@ -309,7 +309,7 @@ module Autobot
         cached_name : String,
         contents : Array(Hash(String, JSON::Any)),
         max_tokens : Int32,
-        temperature : Float64,
+        temperature : Float64
       ) : Response
         body = {
           "cachedContent"    => JSON::Any.new(cached_name),
@@ -325,7 +325,7 @@ module Autobot
         tools : Array(Hash(String, JSON::Any))?,
         contents : Array(Hash(String, JSON::Any)),
         max_tokens : Int32,
-        temperature : Float64,
+        temperature : Float64
       ) : Response
         body = {
           "contents"         => native_contents(contents),

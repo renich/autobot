@@ -18,7 +18,7 @@ module Autobot
 
       def initialize(
         @api_key : String? = nil,
-        @max_results : Int32 = DEFAULT_MAX_RESULTS,
+        @max_results : Int32 = DEFAULT_MAX_RESULTS
       )
         @api_key ||= ENV["BRAVE_API_KEY"]?
       end

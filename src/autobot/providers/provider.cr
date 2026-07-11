@@ -21,7 +21,7 @@ module Autobot
         tools : Array(Hash(String, JSON::Any))? = nil,
         model : String? = nil,
         max_tokens : Int32 = DEFAULT_MAX_TOKENS,
-        temperature : Float64 = DEFAULT_TEMPERATURE,
+        temperature : Float64 = DEFAULT_TEMPERATURE
       ) : Response
 
       # The default model identifier for this provider.

@@ -175,7 +175,7 @@ module Autobot
       # openai then gemini (the only providers that support image generation).
       private def self.resolve_image_provider(
         config : Config::Config,
-        image_config : Config::ImageConfig?,
+        image_config : Config::ImageConfig?
       ) : {Config::ProviderConfig?, String?}
         if override_name = image_config.try(&.provider)
           provider = config.provider_by_name(override_name)
@@ -196,12 +196,12 @@ module Autobot
       IMAGE_CAPABLE_PROVIDERS = {"openai", "gemini"}
 
       BUILTIN_PLUGINS = {
-        "sqlite"         => -> { Plugins::Builtin::SQLitePlugin.new.as(Plugins::Plugin) },
-        "github"         => -> { Plugins::Builtin::GithubPlugin.new.as(Plugins::Plugin) },
-        "weather"        => -> { Plugins::Builtin::WeatherPlugin.new.as(Plugins::Plugin) },
-        "system_info"    => -> { Plugins::SystemInfoPlugin.new.as(Plugins::Plugin) },
-        "text_to_speech" => -> { Plugins::TextToSpeechPlugin.new.as(Plugins::Plugin) },
-        "chat_log"       => -> { Plugins::ChatLogPlugin.new.as(Plugins::Plugin) },
+        "sqlite"         => ->{ Plugins::Builtin::SQLitePlugin.new.as(Plugins::Plugin) },
+        "github"         => ->{ Plugins::Builtin::GithubPlugin.new.as(Plugins::Plugin) },
+        "weather"        => ->{ Plugins::Builtin::WeatherPlugin.new.as(Plugins::Plugin) },
+        "system_info"    => ->{ Plugins::SystemInfoPlugin.new.as(Plugins::Plugin) },
+        "text_to_speech" => ->{ Plugins::TextToSpeechPlugin.new.as(Plugins::Plugin) },
+        "chat_log"       => ->{ Plugins::ChatLogPlugin.new.as(Plugins::Plugin) },
       }
 
       # Register builtin plugins that are enabled in config (all enabled by default).

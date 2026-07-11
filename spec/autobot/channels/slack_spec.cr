@@ -25,7 +25,7 @@ private def build_slack_channel(
   group_allow_from : Array(String) = [] of String,
   dm_enabled : Bool = false,
   dm_policy : String = "allowlist",
-  dm_allow_from : Array(String) = [] of String,
+  dm_allow_from : Array(String) = [] of String
 ) : SlackChannelTest
   bus = Autobot::Bus::MessageBus.new
   dm_config = Autobot::Config::SlackDMConfig.from_yaml(
