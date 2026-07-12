@@ -1,5 +1,6 @@
 require "../config/validator"
 require "../tools/sandbox"
+require "colorize"
 
 module Autobot
   module CLI
@@ -12,10 +13,10 @@ module Autobot
       end
 
       INDICATORS = {
-        Status::Pass => "✓",
-        Status::Fail => "✗",
-        Status::Warn => "!",
-        Status::Skip => "—",
+        Status::Pass => "✓".colorize(:green).mode(:bold),
+        Status::Fail => "✗".colorize(:red).mode(:bold),
+        Status::Warn => "!".colorize(:yellow).mode(:bold),
+        Status::Skip => "—".colorize(:dark_gray),
       }
 
       SECURE_FILE_PERMISSIONS = 0o600
@@ -409,25 +410,31 @@ module Autobot
       end
 
       def self.report(status : Status, message : String) : Nil
-        io.puts "  #{INDICATORS[status]} #{message}"
+        msg = case status
+              when Status::Fail then message.colorize(:red)
+              when Status::Warn then message.colorize(:yellow)
+              when Status::Skip then message.colorize(:dark_gray)
+              else                   message
+              end
+        io.puts "  #{INDICATORS[status]} #{msg}"
       end
 
       def self.hint(message : String?) : Nil
-        io.puts "    → #{message}" if message
+        io.puts "    #{"→".colorize(:dark_gray)} #{message.colorize(:dark_gray)}" if message
       end
 
       def self.print_summary(errors : Int32, warnings : Int32, strict : Bool) : Nil
         io.puts ""
         if errors == 0 && warnings == 0
-          io.puts "All checks passed!"
+          io.puts "All checks passed!".colorize(:green).mode(:bold)
         elsif errors == 0 && !strict
-          io.puts "#{pluralize("warning", warnings)}. All good otherwise!"
+          io.puts "#{pluralize("warning", warnings)} found. All good otherwise!".colorize(:yellow).mode(:bold)
         else
           parts = [] of String
-          parts << pluralize("error", errors) if errors > 0
-          parts << pluralize("warning", warnings) if warnings > 0
+          parts << pluralize("error", errors).colorize(:red).mode(:bold).to_s if errors > 0
+          parts << pluralize("warning", warnings).colorize(:yellow).mode(:bold).to_s if warnings > 0
           io.puts "#{parts.join(", ")} found."
-          io.puts "(--strict: warnings treated as errors)" if strict && errors == 0
+          io.puts "(--strict: warnings treated as errors)".colorize(:dark_gray) if strict && errors == 0
         end
       end
 

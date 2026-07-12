@@ -1,0 +1,3 @@
+## 2024-05-18 - CLI Diagnostics Output Coloring
+**Learning:** For CLI diagnostic tools like `doctor`, users need quick scanability to identify issues. A monochromatic output is hard to parse for critical errors, and subtle textual indicators (like `✗` or `!`) are easily missed when mixed with standard log output. Color is critical for hierarchy in console logs.
+**Action:** Always colorize diagnostic indicators: green for pass, red for critical failures, yellow for warnings, and gray for skips/hints. Use bolding to emphasize the summary string to make sure it stands out from the rest of the checklist.

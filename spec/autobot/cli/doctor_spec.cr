@@ -716,7 +716,7 @@ describe Autobot::CLI::Doctor do
       with_doctor_io do |io|
         Autobot::CLI::Doctor.print_summary(0, 2, false)
 
-        io.to_s.should contain("2 warnings. All good otherwise!")
+        io.to_s.should contain("2 warnings found. All good otherwise!")
       end
     end
 
@@ -724,7 +724,7 @@ describe Autobot::CLI::Doctor do
       with_doctor_io do |io|
         Autobot::CLI::Doctor.print_summary(0, 1, false)
 
-        io.to_s.should contain("1 warning. All good otherwise!")
+        io.to_s.should contain("1 warning found. All good otherwise!")
       end
     end
 
