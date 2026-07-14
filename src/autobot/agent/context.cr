@@ -236,10 +236,14 @@ module Autobot::Agent
           return build_multimodal_content(text, media)
         end
 
-        content = text
-        if media && !media.empty?
-          media_info = media.map { |attachment| "[#{attachment.type}: #{attachment.file_path || attachment.url}]" }.join("\n")
-          content = "#{content}\n\nMedia:\n#{media_info}"
+        content = String.build do |io|
+          io << text
+          if media && !media.empty?
+            io << "\n\nMedia:\n"
+            media.join(io, "\n") do |attachment, join_io|
+              join_io << "[" << attachment.type << ": " << (attachment.file_path || attachment.url) << "]"
+            end
+          end
         end
         JSON::Any.new(content)
       end
