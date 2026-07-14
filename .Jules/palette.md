@@ -1,0 +1,1 @@
+## 2025-02-28 - Add STDOUT.flush to print statements\n**Learning:** In Crystal CLI applications, `print` statements do not automatically flush the output buffer, which causes delayed feedback to the user on prompts.\n**Action:** Always append `STDOUT.flush` immediately after using `print` (as opposed to `puts`) for interactive elements like loading states and inline prompts.
