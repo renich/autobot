@@ -1,0 +1,3 @@
+## 2026-07-15 - [Add STDOUT.flush for CLI visual feedback]
+**Learning:** In Crystal CLI applications, `print` statements do not automatically flush the output buffer, which causes delayed visual feedback (like prompts and "Thinking..." loading indicators) before blocking on `gets` or intensive operations.
+**Action:** Always append `STDOUT.flush` immediately after `print` to ensure immediate and responsive visual feedback in CLI interfaces.
