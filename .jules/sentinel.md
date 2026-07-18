@@ -1,0 +1,4 @@
+## 2024-05-15 - Process pipe deadlocks in telegram channel
+**Vulnerability:** `read_limited_io` exited early with `break` when processing Telegram scripts. This left the pipe open, which means a script that produces more output would block indefinitely trying to write to the pipe. This led to a Denial of Service (DoS).
+**Learning:** When reading from IO pipes in Crystal, use a bounded reading loop that continues discarding excess data until EOF instead of breaking early. This prevents memory exhaustion and avoids pipe deadlocks where child processes hang indefinitely attempting to write to a full pipe.
+**Prevention:** Always read streams to completion, discarding bytes if limits are exceeded. When designing tools that execute external commands, ensure IO pipelines drain fully to prevent child process deadlocks.

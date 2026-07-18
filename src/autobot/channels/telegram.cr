@@ -1101,20 +1101,25 @@ module Autobot::Channels
       buffer = IO::Memory.new
       bytes_read = 0
       chunk = Bytes.new(4096)
+      truncated = false
 
+      # SECURITY: Keep reading and discarding data after max_size is reached
+      # instead of breaking early. This prevents pipe deadlocks where child
+      # processes hang indefinitely attempting to write to a full pipe.
       while (n = io.read(chunk)) > 0
         bytes_read += n
-        if bytes_read > max_size
+        if bytes_read > max_size && !truncated
           buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
           buffer << "\n... (truncated)"
-          break
+          truncated = true
+        elsif !truncated
+          buffer.write(chunk[0, n])
         end
-        buffer.write(chunk[0, n])
       end
 
       buffer.to_s
     rescue
-      ""
+      buffer.to_s
     end
 
     private def send_reply(chat_id : String, text : String) : Nil
