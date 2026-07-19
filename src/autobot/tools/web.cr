@@ -175,6 +175,7 @@ module Autobot
         "Invalid URL"
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def resolve_and_validate_ip(host : String) : Array(String)
         # First check if host looks like an IP address with alternate notation
         if error = check_alternate_ip_notation(host)
@@ -189,6 +190,9 @@ module Autobot
 
         addrinfo.each do |addr|
           ip_str = addr.ip_address.address
+
+          # Strip IPv4-mapped IPv6 prefix to correctly identify local IPv4 addresses
+          ip_str = ip_str[7..-1] if ip_str.starts_with?("::ffff:") && ip_str.size > 7
 
           if private_ip?(ip_str)
             raise "Access to private IP addresses is blocked"
