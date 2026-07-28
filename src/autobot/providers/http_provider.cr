@@ -72,7 +72,7 @@ module Autobot
       # OpenAI-compatible (standard) request
       # -----------------------------------------------------------------
       private def chat_compatible(
-        messages, tools, model, max_tokens, temperature, spec,
+        messages, tools, model, max_tokens, temperature, spec
       ) : Response
         body = build_compatible_body(messages, tools, model, max_tokens, temperature, spec)
         url = resolve_url(spec)
@@ -149,7 +149,7 @@ module Autobot
       # Anthropic Messages API
       # -----------------------------------------------------------------
       private def chat_anthropic(
-        messages, tools, model, max_tokens, temperature, spec,
+        messages, tools, model, max_tokens, temperature, spec
       ) : Response
         body = build_anthropic_body(messages, tools, model, max_tokens, temperature)
         url = resolve_url(spec)

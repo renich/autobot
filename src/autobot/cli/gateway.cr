@@ -5,7 +5,7 @@ module Autobot
   module CLI
     module Gateway
       def self.run(config_path : String?, port : Int32, verbose : Bool) : Nil
-        started_at = Time.instant
+        started_at = Time.monotonic
 
         config = Config::Loader.load(config_path)
 

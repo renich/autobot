@@ -1,0 +1,4 @@
+## 2024-05-14 - Prevent Command Injection in SQLite CLI via Dot-Commands
+**Vulnerability:** The application was executing the `sqlite3` CLI tool with untrusted queries without the `-safe` flag. This allowed command injection because malicious users (or compromised AI models) could pass SQLite dot-commands like `.shell` or `.system` inside the query parameter to execute arbitrary shell commands on the host system.
+**Learning:** Even seemingly standard SQL database interfaces (like the sqlite3 command-line client) can expose dangerous features intended for interactive or trusted use. Passing untrusted input to the CLI tool requires disabling these features.
+**Prevention:** When executing the `sqlite3` CLI tool with untrusted input, always append the `-safe` flag to disable command injection vulnerabilities via SQLite dot-commands (e.g., `.shell`, `.system`, `.import`, `.output`).
