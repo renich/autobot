@@ -905,12 +905,40 @@ module Autobot::Channels
         error: Process::Redirect::Pipe,
       )
 
-      # Read with size limit to prevent DoS (truncate at 4000 chars)
-      output = read_limited_io(process.output, 4000)
-      error_output = read_limited_io(process.error, 4000)
-      status = process.wait
+      # Read concurrently to prevent stream deadlocks
+      stdout_channel = ::Channel(String).new(1)
+      stderr_channel = ::Channel(String).new(1)
 
-      result = if status.success?
+      # Read with size limit to prevent DoS (truncate at 4000 chars)
+      spawn { stdout_channel.send(read_limited_io(process.output, 4000)) }
+      spawn { stderr_channel.send(read_limited_io(process.error, 4000)) }
+
+      completed = ::Channel(Process::Status).new(1)
+      spawn do
+        completed.send(process.wait)
+      end
+
+      status = select
+      when s = completed.receive
+        s
+      when timeout(30.seconds)
+        begin
+          process.signal(Signal::TERM)
+          sleep 2.seconds
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        rescue
+          # ignore error
+        end
+        nil
+      end
+
+      output = stdout_channel.receive
+      error_output = stderr_channel.receive
+
+      result = if status.nil?
+                 "Script timed out after 30 seconds."
+               elsif status.success?
                  output.empty? ? "Script completed successfully." : output
                else
                  "Script failed (exit #{status.exit_code}):\n#{error_output}".strip
@@ -1107,6 +1135,7 @@ module Autobot::Channels
         if bytes_read > max_size
           buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
           buffer << "\n... (truncated)"
+          io.skip_to_end
           break
         end
         buffer.write(chunk[0, n])

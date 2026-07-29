@@ -180,9 +180,9 @@ describe Autobot::Tools::ExecTool do
   describe "daemon execution handling" do
     it "does not hang on background daemon processes" do
       tool = Autobot::Tools::ExecTool.new(executor: create_test_executor, sandbox_config: "none")
-      start = Time.instant
+      start = Time.monotonic
       result = tool.execute({"command" => JSON::Any.new("echo started; sleep 3 &")})
-      elapsed = Time.instant - start
+      elapsed = Time.monotonic - start
 
       result.success?.should be_true
       result.content.strip.should start_with("started")

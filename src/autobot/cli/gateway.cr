@@ -5,7 +5,7 @@ module Autobot
   module CLI
     module Gateway
       def self.run(config_path : String?, port : Int32, verbose : Bool) : Nil
-        started_at = Time.instant
+        started_at = Time.monotonic
 
         config = Config::Loader.load(config_path)
 
@@ -22,7 +22,7 @@ module Autobot
         tool_registry, mcp_clients, rate_limiter = setup_tools(config)
         provider = create_provider(config)
 
-        elapsed_ms = started_at.elapsed.total_milliseconds.to_i
+        elapsed_ms = (Time.monotonic - started_at).total_milliseconds.to_i
         puts "✓ Gateway ready in #{elapsed_ms}ms\n"
 
         # Post-ready setup: plugins, cron, channels, agent loop
