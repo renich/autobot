@@ -1,0 +1,4 @@
+## 2025-03-26 - Pipe deadlock and DoS via Process.new
+**Vulnerability:** Denial of Service (DoS) vulnerability via pipe deadlocks and hanging child processes when interacting with `Process.new` sequentially in `execute_script`.
+**Learning:** Reading standard output and standard error sequentially with `Process.new` without concurrency or timeout mechanisms causes a deadlock when the child process writes heavily to stderr, blocking the stdout read. In addition, not draining the unread data from a pipe before breaking can cause child processes to hang indefinitely trying to write.
+**Prevention:** To prevent DoS and stream deadlocks in Crystal when using `Process.new`, read `stdout` and `stderr` concurrently using `spawn` and `Channel`, and use `select` with a timeout mechanism instead of relying on unbounded `process.wait`. Use `io.skip_to_end` when truncating IO data streams.
