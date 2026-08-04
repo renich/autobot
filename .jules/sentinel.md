@@ -1,0 +1,4 @@
+## 2025-03-01 - Process Stream Deadlock and DoS Vulnerability
+**Vulnerability:** A script execution implementation in Telegram channel (`Process.new`) read from standard output and error pipes sequentially instead of concurrently. Additionally, there was no execution timeout enforced.
+**Learning:** Sequential pipe reading can lead to deadlocks if a child process writes heavily to stderr, filling its buffer and blocking, while the parent is stuck waiting to read stdout. Furthermore, untrusted scripts could run infinite loops, leading to a Denial of Service via resource exhaustion, as `process.wait` blocks indefinitely.
+**Prevention:** Always read `stdout` and `stderr` concurrently (using `spawn` and channels) and enforce bounded execution times using `select` with a timeout mechanism. In addition, when truncating output, `io.skip_to_end` should be used instead of closing the pipe or breaking out to prevent broken pipe errors or hanging child processes.
