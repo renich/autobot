@@ -906,21 +906,57 @@ module Autobot::Channels
       )
 
       # Read with size limit to prevent DoS (truncate at 4000 chars)
-      output = read_limited_io(process.output, 4000)
-      error_output = read_limited_io(process.error, 4000)
-      status = process.wait
+      stdout_channel = Channel(String).new(1)
+      stderr_channel = Channel(String).new(1)
 
-      result = if status.success?
+      spawn { stdout_channel.send(read_limited_io(process.output, 4000)) }
+      spawn { stderr_channel.send(read_limited_io(process.error, 4000)) }
+
+      completed = Channel(Process::Status).new(1)
+      spawn do
+        status = process.wait
+        completed.send(status)
+      end
+
+      # Wait for process with a timeout to prevent infinite hanging
+      timeout_seconds = 60
+      status = nil
+      timed_out = false
+
+      select
+      when status = completed.receive
+      when timeout(timeout_seconds.seconds)
+        timed_out = true
+        begin
+          process.signal(Signal::TERM)
+          sleep 1.second
+          process.signal(Signal::KILL) unless process.terminated?
+          status = process.wait
+        rescue
+          # Process already terminated
+        end
+      end
+
+      process.output.close unless process.output.closed?
+      process.error.close unless process.error.closed?
+
+      output = stdout_channel.receive
+      error_output = stderr_channel.receive
+
+      result = if timed_out
+                 "Script failed: timed out after #{timeout_seconds} seconds"
+               elsif status && status.success?
                  output.empty? ? "Script completed successfully." : output
                else
-                 "Script failed (exit #{status.exit_code}):\n#{error_output}".strip
+                 exit_code = status ? status.exit_code : "unknown"
+                 "Script failed (exit #{exit_code}):\n#{error_output}".strip
                end
 
       stop_typing(chat_id)
       send_reply(chat_id, "<pre>#{MarkdownToTelegramHTML.escape_html(result)}</pre>")
     rescue ex
       stop_typing(chat_id)
-      send_reply(chat_id, "Error running script")
+      send_reply(chat_id, "Error running script: #{ex.message}")
     end
 
     private def validate_script_path(script_path : String) : String?
@@ -1107,6 +1143,7 @@ module Autobot::Channels
         if bytes_read > max_size
           buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
           buffer << "\n... (truncated)"
+          io.skip_to_end
           break
         end
         buffer.write(chunk[0, n])
@@ -1114,7 +1151,7 @@ module Autobot::Channels
 
       buffer.to_s
     rescue
-      ""
+      buffer.to_s
     end
 
     private def send_reply(chat_id : String, text : String) : Nil

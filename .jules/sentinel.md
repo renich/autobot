@@ -1,0 +1,4 @@
+## 2025-05-24 - DoS and pipe deadlock in Process wait
+**Vulnerability:** execute_script in telegram channels used Process.new with a blocking `.wait` without timeouts, and sequentially read stdout and then stderr. A malicious script could write unbounded output to stderr, causing the write pipe buffer to fill up, and stalling the child process. It also lacked a timeout, enabling DoS via endless loops.
+**Learning:** In Crystal, reading large IO pipes sequentially from blocking operations like `process.wait` will cause deadlocks when buffers fill. `Process.new` requires concurrent reading using `spawn`, bounded read loops, and `select` with `timeout` mechanism to gracefully limit output and execution time.
+**Prevention:** Use `Channel(String)` and `spawn` to read stdout/stderr concurrently. Use a `timeout` select for process wait. Use `io.skip_to_end` when truncating output to unblock still-writing daemons.
