@@ -311,7 +311,7 @@ module Autobot::Channels
       @custom_commands : Config::CustomCommandsConfig = Config::CustomCommandsConfig.new,
       @session_manager : Session::Manager? = nil,
       @transcriber : Transcriber? = nil,
-      @cron_service : Cron::Service? = nil,
+      @cron_service : Cron::Service? = nil
     )
       super(Constants::CHANNEL_TELEGRAM, @bus, @allow_from)
     end
@@ -452,7 +452,7 @@ module Autobot::Channels
       api_method : String,
       field_name : String,
       filename : String,
-      content_type : String,
+      content_type : String
     ) : Nil
       body = build_media_multipart(chat_id, file_bytes, caption,
         field_name: field_name, filename: filename, content_type: content_type)
@@ -476,7 +476,7 @@ module Autobot::Channels
       caption : String,
       field_name : String,
       filename : String,
-      content_type : String,
+      content_type : String
     ) : String
       io = IO::Memory.new
 
@@ -898,17 +898,62 @@ module Autobot::Channels
 
       cmd_args = parse_script_args(args)
 
+      stdout_read, stdout_write = IO.pipe
+      stderr_read, stderr_write = IO.pipe
+
       process = Process.new(
         expanded,
         args: cmd_args,
-        output: Process::Redirect::Pipe,
-        error: Process::Redirect::Pipe,
+        output: stdout_write,
+        error: stderr_write,
       )
 
+      stdout_write.close
+      stderr_write.close
+
+      stdout_channel = Channel(String).new(1)
+      stderr_channel = Channel(String).new(1)
+
       # Read with size limit to prevent DoS (truncate at 4000 chars)
-      output = read_limited_io(process.output, 4000)
-      error_output = read_limited_io(process.error, 4000)
-      status = process.wait
+      spawn { stdout_channel.send(read_limited_io(stdout_read, 4000)) }
+      spawn { stderr_channel.send(read_limited_io(stderr_read, 4000)) }
+
+      completed = Channel(Process::Status).new(1)
+      spawn do
+        s = process.wait
+        completed.send(s)
+      end
+
+      status = select
+      when s = completed.receive
+        s
+      when timeout(60.seconds)
+        begin
+          process.signal(Signal::TERM)
+          sleep 1.second
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        rescue
+          Process::Status.new(-1)
+        end
+      end
+
+      output = select
+               when o = stdout_channel.receive
+                 o
+               when timeout(1.second)
+                 ""
+               end
+
+      error_output = select
+                     when e = stderr_channel.receive
+                       e
+                     when timeout(1.second)
+                       ""
+                     end
+
+      stdout_read.close unless stdout_read.closed?
+      stderr_read.close unless stderr_read.closed?
 
       result = if status.success?
                  output.empty? ? "Script completed successfully." : output
@@ -1107,6 +1152,7 @@ module Autobot::Channels
         if bytes_read > max_size
           buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
           buffer << "\n... (truncated)"
+          io.skip_to_end
           break
         end
         buffer.write(chunk[0, n])
@@ -1114,7 +1160,7 @@ module Autobot::Channels
 
       buffer.to_s
     rescue
-      ""
+      buffer.to_s
     end
 
     private def send_reply(chat_id : String, text : String) : Nil
