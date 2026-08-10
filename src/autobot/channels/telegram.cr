@@ -905,10 +905,34 @@ module Autobot::Channels
         error: Process::Redirect::Pipe,
       )
 
-      # Read with size limit to prevent DoS (truncate at 4000 chars)
-      output = read_limited_io(process.output, 4000)
-      error_output = read_limited_io(process.error, 4000)
-      status = process.wait
+      stdout_channel = Channel(String).new(1)
+      stderr_channel = Channel(String).new(1)
+
+      spawn { stdout_channel.send(read_limited_io(process.output, 4000)) }
+      spawn { stderr_channel.send(read_limited_io(process.error, 4000)) }
+
+      completed = Channel(Process::Status).new(1)
+      spawn do
+        status = process.wait
+        completed.send(status)
+      end
+
+      status = select
+      when s = completed.receive
+        s
+      when timeout(30.seconds)
+        begin
+          process.signal(Signal::TERM)
+          sleep 1.second
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        rescue
+          Process::Status.new(124)
+        end
+      end
+
+      output = stdout_channel.receive
+      error_output = stderr_channel.receive
 
       result = if status.success?
                  output.empty? ? "Script completed successfully." : output
@@ -1107,11 +1131,15 @@ module Autobot::Channels
         if bytes_read > max_size
           buffer.write(chunk[0, Math.max(0, max_size - (bytes_read - n))])
           buffer << "\n... (truncated)"
+          io.skip_to_end
           break
         end
         buffer.write(chunk[0, n])
       end
 
+      buffer.to_s
+    rescue ex : IO::Error
+      # Catch 'Closed stream' errors if the pipe is closed while reading
       buffer.to_s
     rescue
       ""
