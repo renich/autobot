@@ -1,0 +1,3 @@
+## 2024-05-24 - Optimizing String Build in context.cr
+**Learning:** In Crystal, `Array#map` followed by `Array#join` creates an intermediate array and multiple intermediate strings, causing unnecessary memory allocations. This is especially true for combining complex string operations. `String.build` combined with `Enumerable#join(io, separator)` is much faster for constructing complex strings because it writes directly to a memory buffer without creating intermediate arrays.
+**Action:** Replace `Array#map` + `join` with `String.build` in hot paths (like `Context::Builder#build_user_content`) for constructing complex strings. Note: Do not apply this refactor to cold paths as the nanosecond gains become unmeasurable micro-optimizations.
