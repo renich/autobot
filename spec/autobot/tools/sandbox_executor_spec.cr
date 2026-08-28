@@ -16,9 +16,9 @@ describe Autobot::Tools::SandboxExecutor do
 
       # The daemon holds the pipe open after `sh` exits; without the fix the
       # reader fibers block until it dies (~3s), so timing catches the regression.
-      start = Time.instant
+      start = Time.monotonic
       result = executor.exec("echo started; sleep 3 &")
-      elapsed = Time.instant - start
+      elapsed = Time.monotonic - start
 
       result.success?.should be_true
       result.content.strip.should start_with("started")
