@@ -885,6 +885,7 @@ module Autobot::Channels
 
     SCRIPT_OUTPUT_LIMIT = 4000
     READ_CHUNK_SIZE     = 4096
+    SCRIPT_TIMEOUT      =   60
 
     private def execute_script(script_path : String, args : String, chat_id : String) : Nil
       expanded = Path[script_path].expand(home: true).to_s
@@ -903,18 +904,46 @@ module Autobot::Channels
         error: Process::Redirect::Pipe,
       )
 
-      # stderr must be read concurrently with stdout: a child blocked on a full pipe never exits
+      # stderr and stdout must be read concurrently to prevent pipe deadlocks
+      output_channel = ::Channel(String).new(1)
       error_channel = ::Channel(String).new(1)
+      spawn { output_channel.send(read_limited_io(process.output, SCRIPT_OUTPUT_LIMIT)) }
       spawn { error_channel.send(read_limited_io(process.error, SCRIPT_OUTPUT_LIMIT)) }
 
-      output = read_limited_io(process.output, SCRIPT_OUTPUT_LIMIT)
-      error_output = error_channel.receive
-      status = process.wait
+      completed = ::Channel(Process::Status).new(1)
+      spawn do
+        status = process.wait
+        completed.send(status)
+      end
 
-      result = if status.success?
+      timed_out = false
+      status = nil
+      select
+      when st = completed.receive
+        status = st
+      when timeout(SCRIPT_TIMEOUT.seconds)
+        timed_out = true
+        begin
+          process.signal(Signal::TERM)
+          sleep 1.second
+          process.signal(Signal::KILL) unless process.terminated?
+          process.wait
+        rescue
+        end
+      end
+
+      process.output.close unless process.output.closed?
+      process.error.close unless process.error.closed?
+
+      output = output_channel.receive
+      error_output = error_channel.receive
+
+      result = if timed_out
+                 "Script timed out after #{SCRIPT_TIMEOUT} seconds."
+               elsif status && status.success?
                  output.empty? ? "Script completed successfully." : output
                else
-                 "Script failed (exit #{status.exit_code}):\n#{error_output}".strip
+                 "Script failed (exit #{status.try(&.exit_code)}):\n#{error_output}".strip
                end
 
       stop_typing(chat_id)
@@ -1128,7 +1157,7 @@ module Autobot::Channels
 
       buffer.to_s
     rescue
-      ""
+      buffer.to_s
     end
 
     private def send_reply(chat_id : String, text : String) : Nil
