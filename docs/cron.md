@@ -312,6 +312,8 @@ autobot cron run <job_id>          # Run if enabled
 autobot cron run <job_id> --force  # Run even if disabled
 ```
 
+`autobot cron run` loads your configuration (`config.yml` or `-c <path>`), executes the job using the configured workspace, sandbox, and timeout settings, prints any command or agent output to stdout, and delivers messages to the job's target channel when configured. If the job fails, the command exits with status `1` and preserves one-time (`--at`) jobs so they can be inspected and retried.
+
 ---
 
 ## Per-Owner Isolation
