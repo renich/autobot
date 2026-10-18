@@ -173,19 +173,19 @@ module Autobot
         )
       end
 
-      private def self.log_sandbox_info(sandbox_config : String) : Nil
-        detected_type = Tools::Sandbox.detect
+      def self.log_sandbox_info(sandbox_config : String, io : IO = STDOUT, err_io : IO = STDERR) : Nil
+        sandbox_type = Tools::Sandbox.resolve_type(sandbox_config)
 
-        case detected_type
+        case sandbox_type
         when Tools::Sandbox::Type::Bubblewrap
-          puts "✓ Sandbox: bubblewrap (kernel-enforced isolation)"
+          io.puts "✓ Sandbox: bubblewrap (kernel-enforced isolation)"
         when Tools::Sandbox::Type::Docker
-          puts "✓ Sandbox: docker (container isolation)"
+          io.puts "✓ Sandbox: docker (container isolation)"
         when Tools::Sandbox::Type::None
           if sandbox_config.downcase == "none"
-            puts "⚠ Sandbox: disabled (direct execution, dev only)"
+            io.puts "⚠ Sandbox: disabled (direct execution, dev only)"
           else
-            STDERR.puts "⚠️  Sandbox: unavailable (install bubblewrap or docker)"
+            err_io.puts "⚠️  Sandbox: unavailable (install bubblewrap or docker)"
           end
         end
       end

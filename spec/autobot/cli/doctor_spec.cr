@@ -181,6 +181,24 @@ describe Autobot::CLI::Doctor do
     ensure
       Autobot::Tools::Sandbox.detect_override = nil
     end
+
+    it "reports the configured sandbox type when explicitly set to docker" do
+      config = make_config(<<-YAML
+      tools:
+        sandbox: "docker"
+      YAML
+      )
+
+      Autobot::Tools::Sandbox.detect_override = Autobot::Tools::Sandbox::Type::Bubblewrap
+      with_doctor_io do |io|
+        errors = Autobot::CLI::Doctor.check_security_settings(config, 0)
+
+        errors.should eq(0)
+        io.to_s.should contain("✓ Sandbox available (docker)")
+      end
+    ensure
+      Autobot::Tools::Sandbox.detect_override = nil
+    end
   end
 
   describe ".check_docker_image" do
@@ -233,6 +251,24 @@ describe Autobot::CLI::Doctor do
         output = io.to_s
         output.should contain("No Dockerfile.sandbox found")
         output.should contain("alpine:latest")
+      end
+    ensure
+      Autobot::Tools::Sandbox.detect_override = nil
+    end
+
+    it "checks Dockerfile.sandbox when sandbox is explicitly set to docker on a bubblewrap host" do
+      config = make_config(<<-YAML
+      tools:
+        sandbox: "docker"
+      YAML
+      )
+
+      Autobot::Tools::Sandbox.detect_override = Autobot::Tools::Sandbox::Type::Bubblewrap
+      with_doctor_io do |io|
+        errors = Autobot::CLI::Doctor.check_docker_image(config, 0)
+
+        errors.should eq(0)
+        io.to_s.should contain("No Dockerfile.sandbox found")
       end
     ensure
       Autobot::Tools::Sandbox.detect_override = nil
