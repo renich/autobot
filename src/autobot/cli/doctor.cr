@@ -270,7 +270,7 @@ module Autobot
           return errors + 1
         end
 
-        sandbox_type = Tools::Sandbox.detect
+        sandbox_type = Tools::Sandbox.resolve_type(sandbox_config)
         report(Status::Pass, "Sandbox available (#{sandbox_type.to_s.downcase})")
 
         check_docker_image(config, errors)
@@ -292,7 +292,8 @@ module Autobot
         # Check for Dockerfile.sandbox convention
         config_dir = Config::Loader.config_dir
         dockerfile = config_dir / Tools::Sandbox::SANDBOX_DOCKERFILE
-        sandbox_type = Tools::Sandbox.detect
+        sandbox_config = config.tools.try(&.sandbox) || "auto"
+        sandbox_type = Tools::Sandbox.resolve_type(sandbox_config)
 
         return errors unless sandbox_type == Tools::Sandbox::Type::Docker
 
